@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>OTTflix</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -776,57 +777,107 @@
     }
 
     // ============================================
-    // Authentication & User Management
+    // Supabase Authentication
     // ============================================
 
+    let supabaseClient = null;
     let currentUser = null;
-    let authToken = localStorage.getItem('ottflix-auth-token');
+    let authToken = null;
+
+    // Initialize Supabase client with config from server
+    async function initSupabase() {
+      try {
+        const res = await fetch('/api/config');
+        const config = await res.json();
+        if (config.supabaseUrl && config.supabaseAnonKey) {
+          supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+
+          // Listen for auth state changes
+          supabaseClient.auth.onAuthStateChange(async (event, session) => {
+            console.log('Auth state changed:', event);
+            if (event === 'SIGNED_IN' && session) {
+              authToken = session.access_token;
+              await checkAuth();
+              loadMovies();
+            } else if (event === 'SIGNED_OUT') {
+              authToken = null;
+              currentUser = null;
+              updateAuthUI();
+              loadMovies();
+            }
+          });
+
+          // Check initial auth state
+          await checkAuth();
+        } else {
+          console.warn('Supabase not configured. Auth disabled.');
+          document.getElementById('login-btn').style.display = 'none';
+        }
+      } catch (e) {
+        console.error('Failed to init Supabase:', e);
+      }
+    }
 
     function getAuthHeaders() {
       return authToken ? { 'Authorization': 'Bearer ' + authToken } : {};
     }
 
-    function loginWithGoogle() {
-      window.location.href = '/api/auth/google';
+    async function loginWithGoogle() {
+      if (!supabaseClient) {
+        console.error('Supabase not initialized');
+        return;
+      }
+      const { data, error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) {
+        console.error('Login error:', error);
+      }
     }
 
     async function checkAuth() {
-      // Check for token in URL (from OAuth callback)
-      const params = new URLSearchParams(window.location.search);
-      const tokenFromUrl = params.get('token');
-      const needsOnboarding = params.get('onboarding') === 'true';
-
-      if (tokenFromUrl) {
-        authToken = tokenFromUrl;
-        localStorage.setItem('ottflix-auth-token', authToken);
-        // Clean URL
-        window.history.replaceState({}, '', '/');
-      }
-
-      if (!authToken) {
+      if (!supabaseClient) {
         updateAuthUI();
         return;
       }
 
-      try {
-        const res = await fetch('/api/auth/me', {
-          headers: getAuthHeaders()
-        });
+      // Get current session from Supabase
+      const { data: { session }, error } = await supabaseClient.auth.getSession();
 
-        if (res.ok) {
-          currentUser = await res.json();
-          updateAuthUI();
+      if (error) {
+        console.error('Session error:', error);
+        updateAuthUI();
+        return;
+      }
 
-          if (needsOnboarding || !currentUser.onboarding_completed) {
-            showOnboarding();
+      if (session) {
+        authToken = session.access_token;
+
+        // Get user from our backend (creates local user if needed)
+        try {
+          const res = await fetch('/api/auth/me', {
+            headers: getAuthHeaders()
+          });
+
+          if (res.ok) {
+            currentUser = await res.json();
+            updateAuthUI();
+
+            // Show onboarding for new users
+            if (!currentUser.onboarding_completed) {
+              showOnboarding();
+            }
+          } else {
+            await logout();
           }
-        } else {
-          // Token invalid
-          logout();
+        } catch (e) {
+          console.error('Auth check failed:', e);
         }
-      } catch (e) {
-        console.error('Auth check failed:', e);
-        logout();
+      } else {
+        updateAuthUI();
       }
     }
 
@@ -850,10 +901,12 @@
       dropdown.classList.toggle('active');
     }
 
-    function logout() {
+    async function logout() {
+      if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+      }
       authToken = null;
       currentUser = null;
-      localStorage.removeItem('ottflix-auth-token');
       updateAuthUI();
       loadMovies();
     }
@@ -1307,7 +1360,7 @@
       if (crew.length > 0) {
         crewCon.innerHTML = crew.map(c => {
           const displayName = (currentLang === 'en' && c.name_en) ? c.name_en : c.name;
-          return '<div class="crew-item"><div class="crew-job">' + c.job + '</div><div class="crew-name">' + displayName + '</div></div>';
+          return '<div class="crew-item"><div class="crew-job">' + escapeHtml(c.job) + '</div><div class="crew-name">' + escapeHtml(displayName) + '</div></div>';
         }).join('');
         crewSec.style.display = 'block';
       } else { crewSec.style.display = 'none'; }
@@ -1378,7 +1431,7 @@
     loadGenres();
     loadMovies();
     loadRecommendations();
-    checkAuth();
+    initSupabase();
 
     // Check if we need to open a movie from chat page
     const movieToOpen = sessionStorage.getItem('ottflix-open-movie');

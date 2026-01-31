@@ -235,11 +235,11 @@ function migrate() {
     `);
     console.log("User preferences table created");
 
-    // Create users table for Google OAuth authentication
+    // Create users table for Supabase authentication
     sqliteDb.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        google_id TEXT UNIQUE NOT NULL,
+        supabase_id TEXT UNIQUE NOT NULL,
         email TEXT NOT NULL,
         name TEXT,
         picture TEXT,
@@ -251,11 +251,31 @@ function migrate() {
     `);
     console.log("Users table created");
 
+    // Migration: rename google_id to supabase_id if needed
+    try {
+      // Check if google_id column exists and rename it
+      const tableInfo = sqliteDb.prepare("PRAGMA table_info(users)").all() as any[];
+      const hasGoogleId = tableInfo.some(col => col.name === 'google_id');
+      const hasSupabaseId = tableInfo.some(col => col.name === 'supabase_id');
+
+      if (hasGoogleId && !hasSupabaseId) {
+        sqliteDb.exec(`ALTER TABLE users RENAME COLUMN google_id TO supabase_id`);
+        console.log("Renamed google_id to supabase_id");
+      }
+    } catch (e: any) {
+      console.log("Column migration check:", e.message);
+    }
+
     // Create indexes for users table
-    sqliteDb.exec(`
-      CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
-      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-    `);
+    try {
+      sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_users_supabase_id ON users(supabase_id)`);
+    } catch (e: any) {
+      // Index might reference non-existent column or already exist
+      try {
+        sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id)`);
+      } catch {}
+    }
+    sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
     console.log("Users indexes created");
 
     // Create user_interactions table for behavior tracking

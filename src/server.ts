@@ -11,8 +11,6 @@ import {
 } from "./services/personalization.js";
 import { generateChatResponse, type ChatMessage } from "./services/chat.js";
 import {
-  getAuthUrl,
-  handleCallback,
   getUserFromToken,
   getUserById,
   type User,
@@ -142,7 +140,7 @@ app.get("/api/search", async (c) => {
     const queryEmbedding = await generateEmbedding(query);
 
     // Check if user is authenticated and has preference embedding
-    const user = getUserFromToken(c.req.header("Authorization"));
+    const user = await getUserFromToken(c.req.header("Authorization"));
     let searchEmbedding: number[];
 
     if (user && user.preference_embedding) {
@@ -664,40 +662,12 @@ app.post("/api/chat", async (c) => {
 });
 
 // ============================================
-// Authentication API Endpoints
+// Authentication API Endpoints (Supabase)
 // ============================================
 
-// GET /api/auth/google - Start Google OAuth flow
-app.get("/api/auth/google", (c) => {
-  const authUrl = getAuthUrl();
-  return c.redirect(authUrl);
-});
-
-// GET /api/auth/callback - Handle OAuth callback
-app.get("/api/auth/callback", async (c) => {
-  try {
-    const code = c.req.query("code");
-    if (!code) {
-      return c.redirect("/?error=no_code");
-    }
-
-    const { token, user, isNewUser } = await handleCallback(code);
-
-    // Redirect to frontend with token and user info
-    const redirectUrl = isNewUser && !user.onboarding_completed
-      ? `/?token=${token}&onboarding=true`
-      : `/?token=${token}`;
-
-    return c.redirect(redirectUrl);
-  } catch (error) {
-    console.error("Auth callback error:", error);
-    return c.redirect("/?error=auth_failed");
-  }
-});
-
-// GET /api/auth/me - Get current user
-app.get("/api/auth/me", (c) => {
-  const user = getUserFromToken(c.req.header("Authorization"));
+// GET /api/auth/me - Get current user (validates Supabase token)
+app.get("/api/auth/me", async (c) => {
+  const user = await getUserFromToken(c.req.header("Authorization"));
 
   if (!user) {
     return c.json({ error: "Not authenticated" }, 401);
@@ -715,8 +685,8 @@ app.get("/api/auth/me", (c) => {
 
 // POST /api/auth/logout - Logout (client-side token removal)
 app.post("/api/auth/logout", (c) => {
-  // Token invalidation would require server-side token storage
-  // For simplicity, we just return success and let the client clear the token
+  // Supabase handles token invalidation
+  // Client should call supabase.auth.signOut()
   return c.json({ success: true });
 });
 
@@ -726,7 +696,7 @@ app.post("/api/auth/logout", (c) => {
 
 // GET /api/onboarding - Get onboarding session
 app.get("/api/onboarding", async (c) => {
-  const user = getUserFromToken(c.req.header("Authorization"));
+  const user = await getUserFromToken(c.req.header("Authorization"));
 
   if (!user) {
     return c.json({ error: "Not authenticated" }, 401);
@@ -746,7 +716,7 @@ app.get("/api/onboarding", async (c) => {
 
 // POST /api/onboarding/chat - Process onboarding chat
 app.post("/api/onboarding/chat", async (c) => {
-  const user = getUserFromToken(c.req.header("Authorization"));
+  const user = await getUserFromToken(c.req.header("Authorization"));
 
   if (!user) {
     return c.json({ error: "Not authenticated" }, 401);
@@ -769,7 +739,7 @@ app.post("/api/onboarding/chat", async (c) => {
 
 // POST /api/onboarding/complete - Complete onboarding and generate embedding
 app.post("/api/onboarding/complete", async (c) => {
-  const user = getUserFromToken(c.req.header("Authorization"));
+  const user = await getUserFromToken(c.req.header("Authorization"));
 
   if (!user) {
     return c.json({ error: "Not authenticated" }, 401);
@@ -790,7 +760,7 @@ app.post("/api/onboarding/complete", async (c) => {
 
 // POST /api/interactions - Track user interaction
 app.post("/api/interactions", async (c) => {
-  const user = getUserFromToken(c.req.header("Authorization"));
+  const user = await getUserFromToken(c.req.header("Authorization"));
 
   if (!user) {
     return c.json({ error: "Not authenticated" }, 401);
@@ -830,8 +800,8 @@ app.post("/api/interactions", async (c) => {
 });
 
 // GET /api/interactions/stats - Get user interaction statistics
-app.get("/api/interactions/stats", (c) => {
-  const user = getUserFromToken(c.req.header("Authorization"));
+app.get("/api/interactions/stats", async (c) => {
+  const user = await getUserFromToken(c.req.header("Authorization"));
 
   if (!user) {
     return c.json({ error: "Not authenticated" }, 401);
@@ -848,7 +818,7 @@ app.get("/api/interactions/stats", (c) => {
 
 // POST /api/interactions/update-embedding - Manually trigger embedding update
 app.post("/api/interactions/update-embedding", async (c) => {
-  const user = getUserFromToken(c.req.header("Authorization"));
+  const user = await getUserFromToken(c.req.header("Authorization"));
 
   if (!user) {
     return c.json({ error: "Not authenticated" }, 401);
@@ -861,6 +831,17 @@ app.post("/api/interactions/update-embedding", async (c) => {
     console.error("Update embedding error:", error);
     return c.json({ error: "Failed to update embedding" }, 500);
   }
+});
+
+// ============================================
+// Config Endpoint (for frontend Supabase init)
+// ============================================
+
+app.get("/api/config", (c) => {
+  return c.json({
+    supabaseUrl: process.env.SUPABASE_URL || "",
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
+  });
 });
 
 // Serve static files from public directory

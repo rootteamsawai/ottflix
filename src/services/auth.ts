@@ -1,22 +1,29 @@
-import { OAuth2Client } from "google-auth-library";
-import jwt from "jsonwebtoken";
+import { createClient, SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
 import "dotenv/config";
 import { sqliteDb } from "../db/index.js";
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
-const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || "http://localhost:3000/api/auth/callback";
-const JWT_SECRET = process.env.JWT_SECRET || "ottflix_jwt_secret";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
 
-const oauth2Client = new OAuth2Client(
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
-  GOOGLE_CALLBACK_URL
-);
+// Server-side Supabase client (lazy initialization)
+let supabase: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient | null {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY ||
+      SUPABASE_URL === "your_supabase_project_url" ||
+      !SUPABASE_URL.startsWith("http")) {
+    return null;
+  }
+
+  if (!supabase) {
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  return supabase;
+}
 
 export interface User {
   id: number;
-  google_id: string;
+  supabase_id: string;
   email: string;
   name: string | null;
   picture: string | null;
@@ -26,62 +33,58 @@ export interface User {
   updated_at: string;
 }
 
-export interface JWTPayload {
-  userId: number;
-  email: string;
-  name: string | null;
-}
-
-export function getAuthUrl(): string {
-  const scopes = [
-    "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/userinfo.profile",
-  ];
-
-  return oauth2Client.generateAuthUrl({
-    access_type: "offline",
-    scope: scopes,
-  });
-}
-
-export async function handleCallback(code: string): Promise<{
-  token: string;
+export interface AuthResult {
   user: User;
   isNewUser: boolean;
-}> {
-  const { tokens } = await oauth2Client.getToken(code);
-  oauth2Client.setCredentials(tokens);
+}
 
-  // Get user info from Google
-  const ticket = await oauth2Client.verifyIdToken({
-    idToken: tokens.id_token!,
-    audience: GOOGLE_CLIENT_ID,
-  });
-
-  const payload = ticket.getPayload();
-  if (!payload) {
-    throw new Error("Invalid token payload");
+/**
+ * Verify Supabase access token and get/create local user
+ */
+export async function verifyAndGetUser(accessToken: string): Promise<User | null> {
+  const client = getSupabaseClient();
+  if (!client) {
+    console.warn("Supabase not configured, auth disabled");
+    return null;
   }
 
-  const googleId = payload.sub;
-  const email = payload.email!;
-  const name = payload.name || null;
-  const picture = payload.picture || null;
+  try {
+    // Verify token with Supabase
+    const { data: { user: supabaseUser }, error } = await client.auth.getUser(accessToken);
+
+    if (error || !supabaseUser) {
+      console.error("Supabase auth error:", error);
+      return null;
+    }
+
+    // Get or create local user
+    return getOrCreateUser(supabaseUser);
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    return null;
+  }
+}
+
+/**
+ * Get or create local user from Supabase user
+ */
+export function getOrCreateUser(supabaseUser: SupabaseUser): User {
+  const supabaseId = supabaseUser.id;
+  const email = supabaseUser.email || "";
+  const name = supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || null;
+  const picture = supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || null;
 
   // Check if user exists
   let user = sqliteDb.prepare(`
-    SELECT * FROM users WHERE google_id = ?
-  `).get(googleId) as User | undefined;
-
-  let isNewUser = false;
+    SELECT * FROM users WHERE supabase_id = ?
+  `).get(supabaseId) as User | undefined;
 
   if (!user) {
     // Create new user
-    isNewUser = true;
     const result = sqliteDb.prepare(`
-      INSERT INTO users (google_id, email, name, picture)
+      INSERT INTO users (supabase_id, email, name, picture)
       VALUES (?, ?, ?, ?)
-    `).run(googleId, email, name, picture);
+    `).run(supabaseId, email, name, picture);
 
     user = sqliteDb.prepare(`
       SELECT * FROM users WHERE id = ?
@@ -89,39 +92,30 @@ export async function handleCallback(code: string): Promise<{
   } else {
     // Update existing user's info
     sqliteDb.prepare(`
-      UPDATE users SET name = ?, picture = ?, updated_at = datetime('now')
+      UPDATE users SET name = ?, picture = ?, email = ?, updated_at = datetime('now')
       WHERE id = ?
-    `).run(name, picture, user.id);
+    `).run(name, picture, email, user.id);
 
     user = sqliteDb.prepare(`
       SELECT * FROM users WHERE id = ?
     `).get(user.id) as User;
   }
 
-  // Generate JWT token
-  const jwtPayload: JWTPayload = {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-  };
-
-  const token = jwt.sign(jwtPayload, JWT_SECRET, { expiresIn: "7d" });
-
-  return { token, user, isNewUser };
-}
-
-export function verifyToken(token: string): JWTPayload | null {
-  try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
-  } catch {
-    return null;
-  }
+  return user;
 }
 
 export function getUserById(userId: number): User | null {
   const user = sqliteDb.prepare(`
     SELECT * FROM users WHERE id = ?
   `).get(userId) as User | undefined;
+
+  return user || null;
+}
+
+export function getUserBySupabaseId(supabaseId: string): User | null {
+  const user = sqliteDb.prepare(`
+    SELECT * FROM users WHERE supabase_id = ?
+  `).get(supabaseId) as User | undefined;
 
   return user || null;
 }
@@ -140,17 +134,14 @@ export function markOnboardingCompleted(userId: number): void {
   `).run(userId);
 }
 
-export function getUserFromToken(authHeader: string | undefined): User | null {
+/**
+ * Get user from Authorization header (Bearer token)
+ */
+export async function getUserFromToken(authHeader: string | undefined): Promise<User | null> {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
   }
 
   const token = authHeader.substring(7);
-  const payload = verifyToken(token);
-
-  if (!payload) {
-    return null;
-  }
-
-  return getUserById(payload.userId);
+  return verifyAndGetUser(token);
 }
