@@ -71,4 +71,31 @@ export function createEmbeddingText(
   return `${titleText} ${overviewText} ${genreText}`.trim();
 }
 
+/**
+ * Calculate average embedding from multiple movie embeddings
+ * to create a user preference vector
+ */
+export function calculateUserPreferenceEmbedding(
+  movieEmbeddings: Buffer[]
+): Buffer {
+  if (movieEmbeddings.length === 0) {
+    throw new Error("No embeddings provided");
+  }
+
+  const DIMS = EMBEDDING_DIMENSIONS;
+  const avg = new Float32Array(DIMS);
+
+  for (const emb of movieEmbeddings) {
+    for (let i = 0; i < DIMS; i++) {
+      avg[i] = (avg[i] ?? 0) + emb.readFloatLE(i * 4);
+    }
+  }
+
+  for (let i = 0; i < DIMS; i++) {
+    avg[i] = (avg[i] ?? 0) / movieEmbeddings.length;
+  }
+
+  return Buffer.from(avg.buffer);
+}
+
 export { EMBEDDING_DIMENSIONS, BATCH_SIZE };

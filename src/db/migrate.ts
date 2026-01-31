@@ -173,6 +173,38 @@ function migrate() {
     `);
     console.log("Indexes for new tables created");
 
+    // Create user_watch_history table for Netflix history
+    sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS user_watch_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        movie_id INTEGER REFERENCES movies(id),
+        netflix_title TEXT NOT NULL,
+        watch_date TEXT,
+        matched INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    console.log("User watch history table created");
+
+    // Create index on session_id for faster lookups
+    sqliteDb.exec(`
+      CREATE INDEX IF NOT EXISTS idx_user_watch_history_session ON user_watch_history(session_id)
+    `);
+    console.log("User watch history index created");
+
+    // Create user_preferences table for storing preference embeddings
+    sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS user_preferences (
+        session_id TEXT PRIMARY KEY,
+        preference_embedding BLOB,
+        movie_count INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    console.log("User preferences table created");
+
     console.log("Migrations completed successfully!");
   } catch (error) {
     console.error("Migration failed:", error);

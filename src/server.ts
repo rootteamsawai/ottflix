@@ -2,7 +2,13 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { sqliteDb } from "./db/index.js";
-import { generateEmbedding } from "./services/embeddings.js";
+import { generateEmbedding, calculateUserPreferenceEmbedding } from "./services/embeddings.js";
+import {
+  parseNetflixCsv,
+  deduplicateEntries,
+  fuzzyMatchTitle,
+  type Movie,
+} from "./services/personalization.js";
 
 const app = new Hono();
 
@@ -399,6 +405,178 @@ app.get("/api/movies/:id", (c) => {
   };
 
   return c.json({ ...movie, watchProviders });
+});
+
+// ============================================
+// Personalization API Endpoints
+// ============================================
+
+// POST /api/history/upload - Upload Netflix CSV and process history
+app.post("/api/history/upload", async (c) => {
+  try {
+    const body = await c.req.parseBody();
+    const file = body["file"] as File | undefined;
+    const sessionId = body["sessionId"] as string | undefined;
+
+    if (!file || !sessionId) {
+      return c.json({ error: "Missing file or sessionId" }, 400);
+    }
+
+    const csvContent = await file.text();
+    const entries = parseNetflixCsv(csvContent);
+    const dedupedEntries = deduplicateEntries(entries);
+
+    // Get all movies for matching
+    const allMovies = sqliteDb
+      .prepare(`SELECT id, tmdb_id, title, title_ja, poster_path, vote_average, genres FROM movies`)
+      .all() as Movie[];
+
+    // Clear existing history for this session
+    sqliteDb.prepare(`DELETE FROM user_watch_history WHERE session_id = ?`).run(sessionId);
+    sqliteDb.prepare(`DELETE FROM user_preferences WHERE session_id = ?`).run(sessionId);
+
+    // Insert history and track matched movies
+    const insertStmt = sqliteDb.prepare(`
+      INSERT INTO user_watch_history (session_id, movie_id, netflix_title, watch_date, matched)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    const matchedMovieIds: number[] = [];
+    let matchedCount = 0;
+
+    for (const entry of dedupedEntries) {
+      const matchedMovie = fuzzyMatchTitle(entry.title, allMovies);
+      const movieId = matchedMovie?.id || null;
+      const matched = matchedMovie ? 1 : 0;
+
+      insertStmt.run(sessionId, movieId, entry.title, entry.date, matched);
+
+      if (matchedMovie) {
+        matchedCount++;
+        if (!matchedMovieIds.includes(matchedMovie.id)) {
+          matchedMovieIds.push(matchedMovie.id);
+        }
+      }
+    }
+
+    // Calculate preference embedding from matched movies
+    if (matchedMovieIds.length > 0) {
+      const embeddings = sqliteDb
+        .prepare(
+          `SELECT embedding FROM movie_embeddings WHERE rowid IN (${matchedMovieIds.join(",")})`
+        )
+        .all() as { embedding: Buffer }[];
+
+      if (embeddings.length > 0) {
+        const preferenceEmbedding = calculateUserPreferenceEmbedding(
+          embeddings.map((e) => e.embedding)
+        );
+
+        sqliteDb
+          .prepare(
+            `INSERT OR REPLACE INTO user_preferences (session_id, preference_embedding, movie_count, updated_at)
+             VALUES (?, ?, ?, datetime('now'))`
+          )
+          .run(sessionId, preferenceEmbedding, matchedMovieIds.length);
+      }
+    }
+
+    return c.json({
+      success: true,
+      totalEntries: dedupedEntries.length,
+      matchedCount,
+      matchedMovieIds: matchedMovieIds.length,
+    });
+  } catch (error) {
+    console.error("History upload error:", error);
+    return c.json({ error: "Failed to process history" }, 500);
+  }
+});
+
+// GET /api/history/:sessionId - Get watch history for a session
+app.get("/api/history/:sessionId", (c) => {
+  const sessionId = c.req.param("sessionId");
+
+  const history = sqliteDb
+    .prepare(
+      `SELECT h.id, h.netflix_title, h.watch_date, h.matched, h.movie_id,
+              m.title, m.title_ja, m.poster_path
+       FROM user_watch_history h
+       LEFT JOIN movies m ON m.id = h.movie_id
+       WHERE h.session_id = ?
+       ORDER BY h.id DESC`
+    )
+    .all(sessionId);
+
+  const stats = sqliteDb
+    .prepare(
+      `SELECT COUNT(*) as total,
+              SUM(CASE WHEN matched = 1 THEN 1 ELSE 0 END) as matched
+       FROM user_watch_history WHERE session_id = ?`
+    )
+    .get(sessionId) as { total: number; matched: number };
+
+  return c.json({ history, stats });
+});
+
+// DELETE /api/history/:sessionId - Clear history for a session
+app.delete("/api/history/:sessionId", (c) => {
+  const sessionId = c.req.param("sessionId");
+
+  sqliteDb.prepare(`DELETE FROM user_watch_history WHERE session_id = ?`).run(sessionId);
+  sqliteDb.prepare(`DELETE FROM user_preferences WHERE session_id = ?`).run(sessionId);
+
+  return c.json({ success: true });
+});
+
+// GET /api/recommendations/:sessionId - Get personalized recommendations
+app.get("/api/recommendations/:sessionId", (c) => {
+  const sessionId = c.req.param("sessionId");
+  const limit = parseInt(c.req.query("limit") || "20");
+
+  // 1. Get user preference embedding
+  const pref = sqliteDb
+    .prepare(`SELECT preference_embedding, movie_count FROM user_preferences WHERE session_id = ?`)
+    .get(sessionId) as { preference_embedding: Buffer; movie_count: number } | undefined;
+
+  if (!pref || !pref.preference_embedding) {
+    return c.json({ error: "No history found" }, 404);
+  }
+
+  // 2. Get watched movie IDs to exclude
+  const watchedIds = sqliteDb
+    .prepare(
+      `SELECT movie_id FROM user_watch_history
+       WHERE session_id = ? AND movie_id IS NOT NULL`
+    )
+    .all(sessionId)
+    .map((r: any) => r.movie_id);
+
+  // 3. Find similar movies using preference embedding (fetch extra to filter)
+  const candidates = sqliteDb
+    .prepare(
+      `SELECT m.id, m.tmdb_id, m.title, m.title_ja, m.poster_path,
+              m.vote_average, m.genres, e.distance
+       FROM movie_embeddings e
+       JOIN movies m ON m.id = e.rowid
+       WHERE e.embedding MATCH ? AND k = ?
+       ORDER BY e.distance`
+    )
+    .all(pref.preference_embedding, limit + watchedIds.length + 20) as any[];
+
+  // 4. Filter out watched movies and limit results
+  const recommendations = candidates
+    .filter((m) => !watchedIds.includes(m.id))
+    .slice(0, limit)
+    .map((m) => ({
+      ...m,
+      affinity: Math.round((1 - m.distance) * 100), // Affinity percentage
+    }));
+
+  return c.json({
+    recommendations,
+    movieCount: pref.movie_count,
+  });
 });
 
 // Serve static files from public directory

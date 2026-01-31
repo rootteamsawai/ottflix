@@ -23,7 +23,10 @@
       font-size: 2rem;
       font-weight: bold;
       color: #e50914;
+      text-decoration: none;
+      cursor: pointer;
     }
+    .logo:hover { opacity: 0.8; }
     .search-bar {
       display: flex;
       gap: 1rem;
@@ -31,43 +34,19 @@
       flex-wrap: wrap;
       align-items: center;
     }
-    .search-bar input, .search-bar select {
+    .search-bar input {
       padding: 0.75rem 1rem;
       border: none;
       border-radius: 4px;
       font-size: 1rem;
       background: #333;
       color: #fff;
-    }
-    .search-bar input {
       flex: 1;
       min-width: 200px;
     }
     .search-bar input::placeholder { color: #888; }
-    .search-mode {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: #888;
-      font-size: 0.9rem;
-    }
-    .search-mode label {
-      cursor: pointer;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      background: #333;
-      transition: all 0.2s;
-    }
-    .search-mode input:checked + label {
-      background: #e50914;
-      color: #fff;
-    }
-    .search-mode input { display: none; }
     main { padding: 2rem; }
-    .stats {
-      color: #888;
-      margin-bottom: 1rem;
-    }
+    .stats { color: #888; margin-bottom: 1rem; }
     .movie-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -90,9 +69,7 @@
       object-fit: cover;
       background: #333;
     }
-    .movie-info {
-      padding: 0.75rem;
-    }
+    .movie-info { padding: 0.75rem; }
     .movie-title {
       font-size: 0.9rem;
       font-weight: 600;
@@ -108,30 +85,8 @@
       justify-content: space-between;
     }
     .movie-rating { color: #ffc107; }
-    .movie-similarity {
-      color: #4CAF50;
-      font-size: 0.7rem;
-    }
-    .pagination {
-      display: flex;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-top: 2rem;
-    }
-    .pagination button {
-      padding: 0.5rem 1rem;
-      border: none;
-      border-radius: 4px;
-      background: #333;
-      color: #fff;
-      cursor: pointer;
-    }
-    .pagination button:hover { background: #444; }
-    .pagination button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .pagination span { padding: 0.5rem 1rem; }
+    .movie-similarity { color: #4CAF50; font-size: 0.7rem; }
+    .loading { text-align: center; padding: 2rem; color: #888; }
 
     /* Modal */
     .modal-overlay {
@@ -152,17 +107,8 @@
       max-height: 90vh;
       overflow-y: auto;
     }
-    .modal-header {
-      position: relative;
-      height: 300px;
-      background: #333;
-    }
-    .modal-backdrop {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      opacity: 0.5;
-    }
+    .modal-header { position: relative; height: 300px; background: #333; }
+    .modal-backdrop { width: 100%; height: 100%; object-fit: cover; opacity: 0.5; }
     .modal-close {
       position: absolute;
       top: 1rem; right: 1rem;
@@ -175,397 +121,139 @@
       font-size: 1.5rem;
     }
     .modal-body { padding: 1.5rem; }
-    .modal-title {
-      font-size: 1.75rem;
-      margin-bottom: 0.5rem;
-    }
-    .modal-title-ja {
-      font-size: 1rem;
-      color: #888;
-      margin-bottom: 1rem;
-    }
-    .modal-genres {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-    .genre-tag {
-      background: #333;
-      padding: 0.25rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.8rem;
-    }
-    .modal-meta {
-      display: flex;
-      gap: 1.5rem;
-      margin-bottom: 1rem;
-      color: #888;
-      font-size: 0.9rem;
-    }
-    .modal-overview {
-      line-height: 1.6;
-      color: #ccc;
-      margin-bottom: 2rem;
-    }
-    .similar-section h3 {
-      margin-bottom: 1rem;
-      color: #fff;
-    }
-    .similar-movies {
-      display: flex;
-      gap: 1rem;
-      overflow-x: auto;
-      padding-bottom: 1rem;
-    }
-    .similar-movie {
-      flex-shrink: 0;
-      width: 120px;
-      cursor: pointer;
-    }
-    .similar-movie img {
-      width: 100%;
-      aspect-ratio: 2/3;
-      object-fit: cover;
-      border-radius: 4px;
-      background: #333;
-    }
-    .similar-movie p {
-      font-size: 0.75rem;
-      margin-top: 0.5rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .loading {
-      text-align: center;
-      padding: 2rem;
-      color: #888;
-    }
-    /* Watch Providers */
-    .providers-section {
-      margin-bottom: 2rem;
-    }
-    .providers-section h3 {
-      margin-bottom: 1rem;
-      color: #fff;
-    }
-    .provider-group {
-      margin-bottom: 1rem;
-    }
-    .provider-group-title {
-      font-size: 0.85rem;
-      color: #888;
-      margin-bottom: 0.5rem;
-    }
-    .provider-list {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-    .provider-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: #333;
-      padding: 0.5rem 0.75rem;
-      border-radius: 6px;
-    }
-    .provider-logo {
-      width: 28px;
-      height: 28px;
-      border-radius: 4px;
-      object-fit: cover;
-      background: #444;
-    }
-    .provider-name {
-      font-size: 0.85rem;
-      color: #fff;
-    }
-    .no-providers {
-      color: #666;
-      font-size: 0.9rem;
-    }
+    .modal-title { font-size: 1.75rem; margin-bottom: 0.5rem; }
+    .modal-title-ja { font-size: 1rem; color: #888; margin-bottom: 1rem; }
+    .modal-genres { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .genre-tag { background: #333; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.8rem; }
+    .modal-meta { display: flex; gap: 1.5rem; margin-bottom: 1rem; color: #888; font-size: 0.9rem; }
+    .modal-overview { line-height: 1.6; color: #ccc; margin-bottom: 2rem; }
+    .modal-tagline { font-style: italic; color: #aaa; margin-bottom: 1rem; font-size: 1.1rem; }
+    .similar-section h3 { margin-bottom: 1rem; color: #fff; }
+    .similar-movies { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+    .similar-movie { flex-shrink: 0; width: 120px; cursor: pointer; }
+    .similar-movie img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: 4px; background: #333; }
+    .similar-movie p { font-size: 0.75rem; margin-top: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* Tagline */
-    .modal-tagline {
-      font-style: italic;
-      color: #aaa;
-      margin-bottom: 1rem;
-      font-size: 1.1rem;
-    }
+    /* Providers */
+    .providers-section { margin-bottom: 2rem; }
+    .providers-section h3 { margin-bottom: 1rem; color: #fff; }
+    .provider-group { margin-bottom: 1rem; }
+    .provider-group-title { font-size: 0.85rem; color: #888; margin-bottom: 0.5rem; }
+    .provider-list { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .provider-item { display: flex; align-items: center; gap: 0.5rem; background: #333; padding: 0.5rem 0.75rem; border-radius: 6px; }
+    .provider-logo { width: 28px; height: 28px; border-radius: 4px; object-fit: cover; background: #444; }
+    .provider-name { font-size: 0.85rem; color: #fff; }
+    .no-providers { color: #666; font-size: 0.9rem; }
 
-    /* Extended Info */
-    .extended-section {
-      margin-bottom: 2rem;
-    }
-    .extended-section h3 {
-      margin-bottom: 1rem;
-      color: #fff;
-    }
-    .extended-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 1rem;
-    }
-    .extended-item {
-      background: #252525;
-      padding: 1rem;
-      border-radius: 8px;
-    }
-    .extended-label {
-      font-size: 0.75rem;
-      color: #888;
-      margin-bottom: 0.25rem;
-    }
-    .extended-value {
-      font-size: 0.95rem;
-      color: #fff;
-    }
-    .extended-value a {
-      color: #e50914;
-      text-decoration: none;
-    }
-    .extended-value a:hover {
-      text-decoration: underline;
-    }
+    /* Extended */
+    .extended-section { margin-bottom: 2rem; }
+    .extended-section h3 { margin-bottom: 1rem; color: #fff; }
+    .extended-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; }
+    .extended-item { background: #252525; padding: 1rem; border-radius: 8px; }
+    .extended-label { font-size: 0.75rem; color: #888; margin-bottom: 0.25rem; }
+    .extended-value { font-size: 0.95rem; color: #fff; }
+    .extended-value a { color: #e50914; text-decoration: none; }
+    .extended-value a:hover { text-decoration: underline; }
 
-    /* Videos Section */
-    .videos-section {
-      margin-bottom: 2rem;
-    }
-    .videos-section h3 {
-      margin-bottom: 1rem;
-      color: #fff;
-    }
-    .video-list {
-      display: flex;
-      gap: 1rem;
-      overflow-x: auto;
-      padding-bottom: 1rem;
-    }
-    .video-item {
-      flex-shrink: 0;
-      width: 280px;
-      cursor: pointer;
-    }
-    .video-thumbnail {
-      width: 100%;
-      aspect-ratio: 16/9;
-      border-radius: 8px;
-      object-fit: cover;
-      background: #333;
-    }
-    .video-name {
-      font-size: 0.85rem;
-      margin-top: 0.5rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .video-type-badge {
-      display: inline-block;
-      background: #e50914;
-      color: #fff;
-      font-size: 0.7rem;
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
-      margin-top: 0.25rem;
-    }
+    /* Videos */
+    .videos-section { margin-bottom: 2rem; }
+    .videos-section h3 { margin-bottom: 1rem; color: #fff; }
+    .video-list { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+    .video-item { flex-shrink: 0; width: 280px; cursor: pointer; }
+    .video-thumbnail { width: 100%; aspect-ratio: 16/9; border-radius: 8px; object-fit: cover; background: #333; }
+    .video-name { font-size: 0.85rem; margin-top: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .video-type-badge { display: inline-block; background: #e50914; color: #fff; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 4px; margin-top: 0.25rem; }
 
     /* Video Modal */
-    .video-modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.95);
-      z-index: 300;
-      justify-content: center;
-      align-items: center;
-    }
-    .video-modal-overlay.active {
-      display: flex;
-    }
-    .video-modal {
-      width: 90%;
-      max-width: 900px;
-      position: relative;
-    }
-    .video-modal iframe {
-      width: 100%;
-      aspect-ratio: 16/9;
-      border: none;
-      border-radius: 8px;
-    }
-    .video-modal-close {
-      position: absolute;
-      top: -40px;
-      right: 0;
-      background: none;
-      border: none;
-      color: #fff;
-      font-size: 2rem;
-      cursor: pointer;
-    }
+    .video-modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 300; justify-content: center; align-items: center; }
+    .video-modal-overlay.active { display: flex; }
+    .video-modal { width: 90%; max-width: 900px; position: relative; }
+    .video-modal iframe { width: 100%; aspect-ratio: 16/9; border: none; border-radius: 8px; }
+    .video-modal-close { position: absolute; top: -40px; right: 0; background: none; border: none; color: #fff; font-size: 2rem; cursor: pointer; }
 
-    /* Cast Section */
-    .cast-section {
-      margin-bottom: 2rem;
-    }
-    .cast-section h3 {
-      margin-bottom: 1rem;
-      color: #fff;
-    }
-    .cast-list {
-      display: flex;
-      gap: 1rem;
-      overflow-x: auto;
-      padding-bottom: 1rem;
-    }
-    .cast-item {
-      flex-shrink: 0;
-      width: 100px;
-      text-align: center;
-    }
-    .cast-photo {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      object-fit: cover;
-      background: #333;
-      margin: 0 auto;
-    }
-    .cast-name {
-      font-size: 0.8rem;
-      margin-top: 0.5rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .cast-character {
-      font-size: 0.7rem;
-      color: #888;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    /* Cast */
+    .cast-section { margin-bottom: 2rem; }
+    .cast-section h3 { margin-bottom: 1rem; color: #fff; }
+    .cast-list { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+    .cast-item { flex-shrink: 0; width: 100px; text-align: center; }
+    .cast-photo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; background: #333; margin: 0 auto; }
+    .cast-name { font-size: 0.8rem; margin-top: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cast-character { font-size: 0.7rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* Crew Section */
-    .crew-section {
-      margin-bottom: 2rem;
-    }
-    .crew-section h3 {
-      margin-bottom: 1rem;
-      color: #fff;
-    }
-    .crew-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-    .crew-item {
-      background: #252525;
-      padding: 0.75rem 1rem;
-      border-radius: 6px;
-    }
-    .crew-job {
-      font-size: 0.7rem;
-      color: #888;
-    }
-    .crew-name {
-      font-size: 0.9rem;
-      color: #fff;
-    }
+    /* Crew */
+    .crew-section { margin-bottom: 2rem; }
+    .crew-section h3 { margin-bottom: 1rem; color: #fff; }
+    .crew-list { display: flex; flex-wrap: wrap; gap: 1rem; }
+    .crew-item { background: #252525; padding: 0.75rem 1rem; border-radius: 6px; }
+    .crew-job { font-size: 0.7rem; color: #888; }
+    .crew-name { font-size: 0.9rem; color: #fff; }
 
-    /* Reviews Section */
-    .reviews-section {
-      margin-bottom: 2rem;
-    }
-    .reviews-section h3 {
-      margin-bottom: 1rem;
-      color: #fff;
-    }
-    .review-list {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-    .review-item {
-      background: #252525;
-      padding: 1rem;
-      border-radius: 8px;
-    }
-    .review-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem;
-    }
-    .review-author {
-      font-weight: 600;
-      color: #fff;
-    }
-    .review-rating {
-      color: #ffc107;
-      font-size: 0.9rem;
-    }
-    .review-content {
-      font-size: 0.9rem;
-      color: #ccc;
-      line-height: 1.5;
-      max-height: 100px;
-      overflow: hidden;
-      position: relative;
-    }
-    .review-content.expanded {
-      max-height: none;
-    }
-    .review-toggle {
-      background: none;
-      border: none;
-      color: #e50914;
-      cursor: pointer;
-      font-size: 0.85rem;
-      margin-top: 0.5rem;
-      padding: 0;
-    }
-    .review-date {
-      font-size: 0.75rem;
-      color: #666;
-      margin-top: 0.5rem;
-    }
+    /* Reviews */
+    .reviews-section { margin-bottom: 2rem; }
+    .reviews-section h3 { margin-bottom: 1rem; color: #fff; }
+    .review-list { display: flex; flex-direction: column; gap: 1rem; }
+    .review-item { background: #252525; padding: 1rem; border-radius: 8px; }
+    .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .review-author { font-weight: 600; color: #fff; }
+    .review-rating { color: #ffc107; font-size: 0.9rem; }
+    .review-content { font-size: 0.9rem; color: #ccc; line-height: 1.5; max-height: 100px; overflow: hidden; }
+    .review-content.expanded { max-height: none; }
+    .review-toggle { background: none; border: none; color: #e50914; cursor: pointer; font-size: 0.85rem; margin-top: 0.5rem; padding: 0; }
+    .review-date { font-size: 0.75rem; color: #666; margin-top: 0.5rem; }
 
-    /* TMDb Similar Section */
-    .tmdb-similar-section {
-      margin-bottom: 2rem;
-    }
-    .tmdb-similar-section h3 {
-      margin-bottom: 1rem;
-      color: #fff;
-    }
+    /* TMDb Similar */
+    .tmdb-similar-section { margin-bottom: 2rem; }
+    .tmdb-similar-section h3 { margin-bottom: 1rem; color: #fff; }
+
+    /* Genre Tags */
+    .genre-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+    .genre-tag-btn { padding: 0.4rem 0.8rem; border: 1px solid #444; border-radius: 999px; background: transparent; color: #ccc; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
+    .genre-tag-btn:hover { border-color: #e50914; color: #fff; }
+    .genre-tag-btn.active { background: #e50914; border-color: #e50914; color: #fff; }
+
+    /* Personalization */
+    .personalization-controls { display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem; }
+    .upload-btn { background: #e50914; color: white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem; border: none; transition: background 0.2s; }
+    .upload-btn:hover { background: #f40612; }
+    .clear-btn { background: #333; color: #888; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+    .clear-btn:hover { background: #444; color: #fff; }
+    .history-status { color: #888; font-size: 0.85rem; }
+    .history-status.success { color: #4CAF50; }
+
+    /* Recommendations */
+    .recommendations-section { margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 12px; }
+    .recommendations-section h2 { color: #e50914; margin-bottom: 0.5rem; font-size: 1.5rem; }
+    .recommendations-subtitle { color: #888; font-size: 0.9rem; margin-bottom: 1rem; }
+    .recommendations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; }
+    .recommendations-grid .movie-card { background: #252535; }
+    .movie-affinity { color: #FF1493; font-size: 0.7rem; font-weight: 600; display: block; margin-top: 0.25rem; }
   </style>
 </head>
 <body>
   <header>
-    <div class="logo">OTTflix</div>
+    <a href="/" class="logo">OTTflix</a>
     <div class="search-bar">
-      <input type="text" id="search" placeholder="映画を検索... (例: 宇宙を舞台にした感動作)">
-      <select id="genre">
-        <option value="">すべてのジャンル</option>
-      </select>
-      <div class="search-mode">
-        <input type="radio" name="mode" id="mode-text" value="text" checked>
-        <label for="mode-text">テキスト検索</label>
-        <input type="radio" name="mode" id="mode-semantic" value="semantic">
-        <label for="mode-semantic">AI検索</label>
-      </div>
+      <input type="text" id="search" placeholder="どんな映画が見たいですか？ (例: 宇宙を舞台にした感動作)">
+    </div>
+    <div class="genre-tags" id="genre-tags"></div>
+    <div class="personalization-controls">
+      <label class="upload-btn">
+        <input type="file" id="csv-upload" accept=".csv" hidden>
+        Netflix履歴をアップロード
+      </label>
+      <button id="clear-history" class="clear-btn" style="display:none">履歴クリア</button>
+      <span id="history-status" class="history-status"></span>
     </div>
   </header>
 
   <main>
+    <section class="recommendations-section" id="recommendations" style="display:none">
+      <h2>あなたへのおすすめ</h2>
+      <p class="recommendations-subtitle">視聴履歴に基づく、まだ見ていない映画</p>
+      <div class="recommendations-grid" id="recommendations-grid"></div>
+    </section>
     <div class="stats" id="stats"></div>
     <div class="movie-grid" id="movies"></div>
-    <div class="pagination" id="pagination"></div>
   </main>
 
   <div class="modal-overlay" id="modal">
@@ -581,46 +269,14 @@
         <div class="modal-genres" id="modal-genres"></div>
         <div class="modal-meta" id="modal-meta"></div>
         <p class="modal-overview" id="modal-overview"></p>
-
-        <div class="extended-section" id="extended-section">
-          <h3>詳細情報</h3>
-          <div class="extended-grid" id="extended-content"></div>
-        </div>
-
-        <div class="providers-section" id="providers-section">
-          <h3>どこで見れる</h3>
-          <div id="providers-content"></div>
-        </div>
-
-        <div class="videos-section" id="videos-section">
-          <h3>予告編</h3>
-          <div class="video-list" id="videos-content"></div>
-        </div>
-
-        <div class="cast-section" id="cast-section">
-          <h3>キャスト</h3>
-          <div class="cast-list" id="cast-content"></div>
-        </div>
-
-        <div class="crew-section" id="crew-section">
-          <h3>スタッフ</h3>
-          <div class="crew-list" id="crew-content"></div>
-        </div>
-
-        <div class="reviews-section" id="reviews-section">
-          <h3>レビュー</h3>
-          <div class="review-list" id="reviews-content"></div>
-        </div>
-
-        <div class="tmdb-similar-section" id="tmdb-similar-section">
-          <h3>関連作品 (TMDb)</h3>
-          <div class="similar-movies" id="tmdb-similar-content"></div>
-        </div>
-
-        <div class="similar-section">
-          <h3>似ている映画 (AI類似)</h3>
-          <div class="similar-movies" id="similar-movies"></div>
-        </div>
+        <div class="extended-section" id="extended-section"><h3>詳細情報</h3><div class="extended-grid" id="extended-content"></div></div>
+        <div class="providers-section" id="providers-section"><h3>どこで見れる</h3><div id="providers-content"></div></div>
+        <div class="videos-section" id="videos-section"><h3>予告編</h3><div class="video-list" id="videos-content"></div></div>
+        <div class="cast-section" id="cast-section"><h3>キャスト</h3><div class="cast-list" id="cast-content"></div></div>
+        <div class="crew-section" id="crew-section"><h3>スタッフ</h3><div class="crew-list" id="crew-content"></div></div>
+        <div class="reviews-section" id="reviews-section"><h3>レビュー</h3><div class="review-list" id="reviews-content"></div></div>
+        <div class="tmdb-similar-section" id="tmdb-similar-section"><h3>関連作品 (TMDb)</h3><div class="similar-movies" id="tmdb-similar-content"></div></div>
+        <div class="similar-section"><h3>似ている映画 (AI類似)</h3><div class="similar-movies" id="similar-movies"></div></div>
       </div>
     </div>
   </div>
@@ -636,136 +292,156 @@
     const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
     const TMDB_LOGO_BASE = 'https://image.tmdb.org/t/p/w92';
     const TMDB_PROFILE_BASE = 'https://image.tmdb.org/t/p/w185';
-    let currentPage = 1;
     let currentSearch = '';
     let currentGenre = '';
-    let searchMode = 'text';
 
     async function loadGenres() {
       const res = await fetch('/api/genres');
       const genres = await res.json();
-      const select = document.getElementById('genre');
-      genres.forEach(g => {
-        const opt = document.createElement('option');
-        opt.value = g;
-        opt.textContent = g;
-        select.appendChild(opt);
+      const container = document.getElementById('genre-tags');
+      container.innerHTML = genres.map(g => '<button class="genre-tag-btn" data-genre="' + g + '">' + g + '</button>').join('');
+      container.addEventListener('click', (e) => {
+        if (e.target.classList.contains('genre-tag-btn')) {
+          const genre = e.target.dataset.genre;
+          if (currentGenre === genre) {
+            currentGenre = '';
+            e.target.classList.remove('active');
+          } else {
+            document.querySelectorAll('.genre-tag-btn').forEach(btn => btn.classList.remove('active'));
+            currentGenre = genre;
+            e.target.classList.add('active');
+          }
+          currentSearch = '';
+          document.getElementById('search').value = '';
+          loadMovies();
+        }
       });
     }
 
-    async function loadMovies() {
-      document.getElementById('movies').innerHTML = '<div class="loading">読み込み中...</div>';
-      document.getElementById('pagination').innerHTML = '';
+    function getSessionId() {
+      let id = localStorage.getItem('ottflix-session');
+      if (!id) {
+        id = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+        localStorage.setItem('ottflix-session', id);
+      }
+      return id;
+    }
 
-      if (searchMode === 'semantic' && currentSearch) {
-        // Semantic search
-        const res = await fetch(`/api/search?q=${encodeURIComponent(currentSearch)}&limit=40`);
-        const data = await res.json();
-
-        if (data.error) {
-          document.getElementById('movies').innerHTML = `<div class="loading">${data.error}</div>`;
+    async function loadRecommendations() {
+      const sessionId = getSessionId();
+      try {
+        const res = await fetch('/api/recommendations/' + sessionId + '?limit=20');
+        if (!res.ok) {
+          document.getElementById('recommendations').style.display = 'none';
+          document.getElementById('clear-history').style.display = 'none';
           return;
         }
-
-        renderMovies(data.movies, true);
-        document.getElementById('stats').textContent = `「${currentSearch}」に関連する映画: ${data.movies.length}件`;
-      } else {
-        // Regular text search
-        const params = new URLSearchParams({
-          page: currentPage,
-          limit: 20,
-          search: currentSearch,
-          genre: currentGenre
-        });
-
-        const res = await fetch(`/api/movies?${params}`);
         const data = await res.json();
-
-        renderMovies(data.movies, false);
-        renderPagination(data.pagination);
-        renderStats(data.pagination);
+        if (!data.recommendations || data.recommendations.length === 0) {
+          document.getElementById('recommendations').style.display = 'none';
+          return;
+        }
+        document.getElementById('recommendations').style.display = 'block';
+        document.getElementById('clear-history').style.display = 'inline-block';
+        renderRecommendations(data.recommendations);
+      } catch (e) {
+        document.getElementById('recommendations').style.display = 'none';
       }
     }
 
-    function renderMovies(movies, showSimilarity = false) {
-      const grid = document.getElementById('movies');
+    function renderRecommendations(movies) {
+      const grid = document.getElementById('recommendations-grid');
       grid.innerHTML = movies.map(m => {
-        const genres = m.genres ? JSON.parse(m.genres) : [];
-        const year = m.release_date ? m.release_date.split('-')[0] : '';
-        const poster = m.poster_path
-          ? `${TMDB_IMAGE_BASE}${m.poster_path}`
-          : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="%23333" width="200" height="300"/><text x="100" y="150" fill="%23666" text-anchor="middle" font-size="14">No Image</text></svg>';
-
-        const similarityBadge = showSimilarity && m.distance !== undefined
-          ? `<span class="movie-similarity">類似度: ${((1 - m.distance) * 100).toFixed(0)}%</span>`
-          : '';
-
-        return `
-          <div class="movie-card" onclick="openModal(${m.id})">
-            <img class="movie-poster" src="${poster}" alt="${m.title}" loading="lazy">
-            <div class="movie-info">
-              <div class="movie-title">${m.title_ja || m.title}</div>
-              <div class="movie-meta">
-                <span>${year}</span>
-                <span class="movie-rating">★ ${m.vote_average?.toFixed(1) || '-'}</span>
-              </div>
-              ${similarityBadge}
-            </div>
-          </div>
-        `;
+        const poster = m.poster_path ? TMDB_IMAGE_BASE + m.poster_path : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="%23333" width="200" height="300"/></svg>';
+        return '<div class="movie-card" onclick="openModal(' + m.id + ')"><img class="movie-poster" src="' + poster + '" alt="' + m.title + '" loading="lazy"><div class="movie-info"><div class="movie-title">' + (m.title_ja || m.title) + '</div><div class="movie-meta"><span class="movie-rating">★ ' + (m.vote_average?.toFixed(1) || '-') + '</span></div><span class="movie-affinity">あなた好み度: ' + m.affinity + '%</span></div></div>';
       }).join('');
     }
 
-    function renderPagination({ page, totalPages }) {
-      const div = document.getElementById('pagination');
-      if (totalPages <= 1) {
-        div.innerHTML = '';
-        return;
+    document.getElementById('csv-upload').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const statusEl = document.getElementById('history-status');
+      statusEl.textContent = 'アップロード中...';
+      statusEl.classList.remove('success');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('sessionId', getSessionId());
+      try {
+        const res = await fetch('/api/history/upload', { method: 'POST', body: formData });
+        const result = await res.json();
+        if (result.success) {
+          statusEl.textContent = result.matchedCount + '/' + result.totalEntries + '件マッチ';
+          statusEl.classList.add('success');
+          document.getElementById('clear-history').style.display = 'inline-block';
+          loadRecommendations();
+        } else {
+          statusEl.textContent = 'アップロード失敗';
+        }
+      } catch (err) {
+        statusEl.textContent = 'エラー';
       }
-      div.innerHTML = `
-        <button onclick="goToPage(1)" ${page === 1 ? 'disabled' : ''}>«</button>
-        <button onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>‹</button>
-        <span>${page} / ${totalPages}</span>
-        <button onclick="goToPage(${page + 1})" ${page >= totalPages ? 'disabled' : ''}>›</button>
-        <button onclick="goToPage(${totalPages})" ${page >= totalPages ? 'disabled' : ''}>»</button>
-      `;
-    }
+      e.target.value = '';
+    });
 
-    function renderStats({ total }) {
-      document.getElementById('stats').textContent = `${total}件の映画`;
-    }
+    document.getElementById('clear-history').addEventListener('click', async () => {
+      try {
+        await fetch('/api/history/' + getSessionId(), { method: 'DELETE' });
+        document.getElementById('recommendations').style.display = 'none';
+        document.getElementById('clear-history').style.display = 'none';
+        document.getElementById('history-status').textContent = '';
+      } catch (e) {}
+    });
 
-    function goToPage(page) {
-      currentPage = page;
-      loadMovies();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    async function loadMovies() {
+      const moviesEl = document.getElementById('movies');
+      const statsEl = document.getElementById('stats');
+      moviesEl.innerHTML = '<div class="loading">読み込み中...</div>';
 
-    function renderProvider(provider) {
-      const logo = provider.logo_path
-        ? `${TMDB_LOGO_BASE}${provider.logo_path}`
-        : '';
-      return `
-        <div class="provider-item">
-          ${logo ? `<img class="provider-logo" src="${logo}" alt="${provider.provider_name}">` : ''}
-          <span class="provider-name">${provider.provider_name}</span>
-        </div>
-      `;
-    }
-
-    function formatCurrency(amount) {
-      if (!amount || amount === 0) return '-';
-      if (amount >= 1000000000) {
-        return '$' + (amount / 1000000000).toFixed(1) + 'B';
+      if (currentSearch) {
+        // AI検索
+        const res = await fetch('/api/search?q=' + encodeURIComponent(currentSearch) + '&limit=40');
+        const data = await res.json();
+        if (data.error) {
+          moviesEl.innerHTML = '<div class="loading">' + data.error + '</div>';
+          return;
+        }
+        renderMovies(data.movies, true);
+        statsEl.textContent = '「' + currentSearch + '」に関連する映画: ' + data.movies.length + '件';
+      } else {
+        // 通常表示（ジャンルフィルター対応）
+        const params = new URLSearchParams({ limit: '40' });
+        if (currentGenre) params.set('genre', currentGenre);
+        const res = await fetch('/api/movies?' + params);
+        const data = await res.json();
+        renderMovies(data.movies, false);
+        statsEl.textContent = currentGenre ? currentGenre + ': ' + data.pagination.total + '件' : '人気の映画: ' + data.pagination.total + '件';
       }
-      if (amount >= 1000000) {
-        return '$' + (amount / 1000000).toFixed(1) + 'M';
-      }
-      return '$' + amount.toLocaleString();
     }
 
-    function openVideoModal(videoKey) {
-      document.getElementById('video-iframe').src = `https://www.youtube.com/embed/${videoKey}?autoplay=1`;
+    function renderMovies(movies, showSimilarity) {
+      const grid = document.getElementById('movies');
+      grid.innerHTML = movies.map(m => {
+        const year = m.release_date ? m.release_date.split('-')[0] : '';
+        const poster = m.poster_path ? TMDB_IMAGE_BASE + m.poster_path : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="%23333" width="200" height="300"/></svg>';
+        const sim = showSimilarity && m.distance !== undefined ? '<span class="movie-similarity">類似度: ' + ((1 - m.distance) * 100).toFixed(0) + '%</span>' : '';
+        return '<div class="movie-card" onclick="openModal(' + m.id + ')"><img class="movie-poster" src="' + poster + '" alt="' + m.title + '" loading="lazy"><div class="movie-info"><div class="movie-title">' + (m.title_ja || m.title) + '</div><div class="movie-meta"><span>' + year + '</span><span class="movie-rating">★ ' + (m.vote_average?.toFixed(1) || '-') + '</span></div>' + sim + '</div></div>';
+      }).join('');
+    }
+
+    function renderProvider(p) {
+      const logo = p.logo_path ? TMDB_LOGO_BASE + p.logo_path : '';
+      return '<div class="provider-item">' + (logo ? '<img class="provider-logo" src="' + logo + '" alt="' + p.provider_name + '">' : '') + '<span class="provider-name">' + p.provider_name + '</span></div>';
+    }
+
+    function formatCurrency(a) {
+      if (!a || a === 0) return '-';
+      if (a >= 1e9) return '$' + (a/1e9).toFixed(1) + 'B';
+      if (a >= 1e6) return '$' + (a/1e6).toFixed(1) + 'M';
+      return '$' + a.toLocaleString();
+    }
+
+    function openVideoModal(k) {
+      document.getElementById('video-iframe').src = 'https://www.youtube.com/embed/' + k + '?autoplay=1';
       document.getElementById('video-modal').classList.add('active');
     }
 
@@ -775,206 +451,104 @@
     }
 
     function toggleReview(btn) {
-      const content = btn.previousElementSibling;
-      content.classList.toggle('expanded');
-      btn.textContent = content.classList.contains('expanded') ? '閉じる' : '続きを読む';
+      const c = btn.previousElementSibling;
+      c.classList.toggle('expanded');
+      btn.textContent = c.classList.contains('expanded') ? '閉じる' : '続きを読む';
     }
 
     async function openModal(id) {
-      const [fullRes, similarRes] = await Promise.all([
-        fetch(`/api/movies/${id}/full`),
-        fetch(`/api/movies/${id}/similar?limit=6`)
-      ]);
-
+      const [fullRes, similarRes] = await Promise.all([fetch('/api/movies/' + id + '/full'), fetch('/api/movies/' + id + '/similar?limit=6')]);
       const m = await fullRes.json();
       const similarData = await similarRes.json();
-
       const genres = m.genres ? JSON.parse(m.genres) : [];
-      const backdrop = m.poster_path ? `${TMDB_IMAGE_BASE}${m.poster_path}` : '';
+      const backdrop = m.poster_path ? TMDB_IMAGE_BASE + m.poster_path : '';
 
       document.getElementById('modal-backdrop').src = backdrop;
       document.getElementById('modal-title').textContent = m.title;
       document.getElementById('modal-title-ja').textContent = m.title_ja || '';
 
-      // Tagline
       const taglineEl = document.getElementById('modal-tagline');
       if (m.extended?.tagline_ja || m.extended?.tagline) {
-        taglineEl.textContent = `"${m.extended.tagline_ja || m.extended.tagline}"`;
+        taglineEl.textContent = '"' + (m.extended.tagline_ja || m.extended.tagline) + '"';
         taglineEl.style.display = 'block';
-      } else {
-        taglineEl.style.display = 'none';
-      }
+      } else { taglineEl.style.display = 'none'; }
 
-      document.getElementById('modal-genres').innerHTML = genres.map(g =>
-        `<span class="genre-tag">${g}</span>`
-      ).join('');
-      document.getElementById('modal-meta').innerHTML = `
-        <span>公開: ${m.release_date || '不明'}</span>
-        <span>上映時間: ${m.runtime ? m.runtime + '分' : '不明'}</span>
-        <span>評価: ★ ${m.vote_average?.toFixed(1) || '-'}</span>
-      `;
+      document.getElementById('modal-genres').innerHTML = genres.map(g => '<span class="genre-tag">' + g + '</span>').join('');
+      document.getElementById('modal-meta').innerHTML = '<span>公開: ' + (m.release_date || '不明') + '</span><span>上映時間: ' + (m.runtime ? m.runtime + '分' : '不明') + '</span><span>評価: ★ ' + (m.vote_average?.toFixed(1) || '-') + '</span>';
       document.getElementById('modal-overview').textContent = m.overview_ja || m.overview || '概要なし';
 
-      // Extended Info
-      const extendedSection = document.getElementById('extended-section');
-      const extendedContent = document.getElementById('extended-content');
+      const extSec = document.getElementById('extended-section');
+      const extCon = document.getElementById('extended-content');
       if (m.extended) {
-        let extHtml = '';
-        if (m.extended.budget > 0) {
-          extHtml += `<div class="extended-item"><div class="extended-label">製作費</div><div class="extended-value">${formatCurrency(m.extended.budget)}</div></div>`;
-        }
-        if (m.extended.revenue > 0) {
-          extHtml += `<div class="extended-item"><div class="extended-label">興行収入</div><div class="extended-value">${formatCurrency(m.extended.revenue)}</div></div>`;
-        }
-        if (m.extended.status) {
-          extHtml += `<div class="extended-item"><div class="extended-label">ステータス</div><div class="extended-value">${m.extended.status}</div></div>`;
-        }
-        if (m.extended.imdb_id) {
-          extHtml += `<div class="extended-item"><div class="extended-label">IMDb</div><div class="extended-value"><a href="https://www.imdb.com/title/${m.extended.imdb_id}" target="_blank">IMDbで見る</a></div></div>`;
-        }
-        if (m.extended.homepage) {
-          extHtml += `<div class="extended-item"><div class="extended-label">公式サイト</div><div class="extended-value"><a href="${m.extended.homepage}" target="_blank">公式サイト</a></div></div>`;
-        }
-        if (extHtml) {
-          extendedContent.innerHTML = extHtml;
-          extendedSection.style.display = 'block';
-        } else {
-          extendedSection.style.display = 'none';
-        }
-      } else {
-        extendedSection.style.display = 'none';
-      }
+        let h = '';
+        if (m.extended.budget > 0) h += '<div class="extended-item"><div class="extended-label">製作費</div><div class="extended-value">' + formatCurrency(m.extended.budget) + '</div></div>';
+        if (m.extended.revenue > 0) h += '<div class="extended-item"><div class="extended-label">興行収入</div><div class="extended-value">' + formatCurrency(m.extended.revenue) + '</div></div>';
+        if (m.extended.imdb_id) h += '<div class="extended-item"><div class="extended-label">IMDb</div><div class="extended-value"><a href="https://www.imdb.com/title/' + m.extended.imdb_id + '" target="_blank">IMDbで見る</a></div></div>';
+        if (h) { extCon.innerHTML = h; extSec.style.display = 'block'; } else { extSec.style.display = 'none'; }
+      } else { extSec.style.display = 'none'; }
 
-      // Render watch providers
-      const providersSection = document.getElementById('providers-section');
-      const providersContent = document.getElementById('providers-content');
       const wp = m.watchProviders || { flatrate: [], rent: [], buy: [] };
-
+      const provCon = document.getElementById('providers-content');
       if (wp.flatrate.length === 0 && wp.rent.length === 0 && wp.buy.length === 0) {
-        providersContent.innerHTML = '<p class="no-providers">配信情報はありません</p>';
+        provCon.innerHTML = '<p class="no-providers">配信情報はありません</p>';
       } else {
-        let html = '';
-        if (wp.flatrate.length > 0) {
-          html += `<div class="provider-group"><div class="provider-group-title">定額配信</div><div class="provider-list">${wp.flatrate.map(p => renderProvider(p)).join('')}</div></div>`;
-        }
-        if (wp.rent.length > 0) {
-          html += `<div class="provider-group"><div class="provider-group-title">レンタル</div><div class="provider-list">${wp.rent.map(p => renderProvider(p)).join('')}</div></div>`;
-        }
-        if (wp.buy.length > 0) {
-          html += `<div class="provider-group"><div class="provider-group-title">購入</div><div class="provider-list">${wp.buy.map(p => renderProvider(p)).join('')}</div></div>`;
-        }
-        providersContent.innerHTML = html;
+        let h = '';
+        if (wp.flatrate.length > 0) h += '<div class="provider-group"><div class="provider-group-title">定額配信</div><div class="provider-list">' + wp.flatrate.map(renderProvider).join('') + '</div></div>';
+        if (wp.rent.length > 0) h += '<div class="provider-group"><div class="provider-group-title">レンタル</div><div class="provider-list">' + wp.rent.map(renderProvider).join('') + '</div></div>';
+        if (wp.buy.length > 0) h += '<div class="provider-group"><div class="provider-group-title">購入</div><div class="provider-list">' + wp.buy.map(renderProvider).join('') + '</div></div>';
+        provCon.innerHTML = h;
       }
 
-      // Render videos
-      const videosSection = document.getElementById('videos-section');
-      const videosContent = document.getElementById('videos-content');
       const videos = m.videos || [];
+      const vidSec = document.getElementById('videos-section');
+      const vidCon = document.getElementById('videos-content');
       if (videos.length > 0) {
-        videosContent.innerHTML = videos.map(v => `
-          <div class="video-item" onclick="openVideoModal('${v.video_key}')">
-            <img class="video-thumbnail" src="https://img.youtube.com/vi/${v.video_key}/mqdefault.jpg" alt="${v.name}">
-            <p class="video-name">${v.name}</p>
-            <span class="video-type-badge">${v.video_type}</span>
-          </div>
-        `).join('');
-        videosSection.style.display = 'block';
-      } else {
-        videosSection.style.display = 'none';
-      }
+        vidCon.innerHTML = videos.map(v => '<div class="video-item" onclick="openVideoModal(\'' + v.video_key + '\')"><img class="video-thumbnail" src="https://img.youtube.com/vi/' + v.video_key + '/mqdefault.jpg" alt=""><p class="video-name">' + v.name + '</p><span class="video-type-badge">' + v.video_type + '</span></div>').join('');
+        vidSec.style.display = 'block';
+      } else { vidSec.style.display = 'none'; }
 
-      // Render cast
-      const castSection = document.getElementById('cast-section');
-      const castContent = document.getElementById('cast-content');
       const cast = m.credits?.cast || [];
+      const castSec = document.getElementById('cast-section');
+      const castCon = document.getElementById('cast-content');
       if (cast.length > 0) {
-        castContent.innerHTML = cast.map(c => {
-          const photo = c.profile_path
-            ? `${TMDB_PROFILE_BASE}${c.profile_path}`
-            : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23333" width="100" height="100"/><text x="50" y="55" fill="%23666" text-anchor="middle" font-size="12">No Photo</text></svg>';
-          return `
-            <div class="cast-item">
-              <img class="cast-photo" src="${photo}" alt="${c.name}" loading="lazy">
-              <p class="cast-name">${c.name}</p>
-              <p class="cast-character">${c.character || ''}</p>
-            </div>
-          `;
+        castCon.innerHTML = cast.map(c => {
+          const photo = c.profile_path ? TMDB_PROFILE_BASE + c.profile_path : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23333" width="100" height="100"/></svg>';
+          return '<div class="cast-item"><img class="cast-photo" src="' + photo + '" alt="' + c.name + '" loading="lazy"><p class="cast-name">' + c.name + '</p><p class="cast-character">' + (c.character || '') + '</p></div>';
         }).join('');
-        castSection.style.display = 'block';
-      } else {
-        castSection.style.display = 'none';
-      }
+        castSec.style.display = 'block';
+      } else { castSec.style.display = 'none'; }
 
-      // Render crew
-      const crewSection = document.getElementById('crew-section');
-      const crewContent = document.getElementById('crew-content');
       const crew = m.credits?.crew || [];
+      const crewSec = document.getElementById('crew-section');
+      const crewCon = document.getElementById('crew-content');
       if (crew.length > 0) {
-        crewContent.innerHTML = crew.map(c => `
-          <div class="crew-item">
-            <div class="crew-job">${c.job}</div>
-            <div class="crew-name">${c.name}</div>
-          </div>
-        `).join('');
-        crewSection.style.display = 'block';
-      } else {
-        crewSection.style.display = 'none';
-      }
+        crewCon.innerHTML = crew.map(c => '<div class="crew-item"><div class="crew-job">' + c.job + '</div><div class="crew-name">' + c.name + '</div></div>').join('');
+        crewSec.style.display = 'block';
+      } else { crewSec.style.display = 'none'; }
 
-      // Render reviews
-      const reviewsSection = document.getElementById('reviews-section');
-      const reviewsContent = document.getElementById('reviews-content');
       const reviews = m.reviews || [];
+      const revSec = document.getElementById('reviews-section');
+      const revCon = document.getElementById('reviews-content');
       if (reviews.length > 0) {
-        reviewsContent.innerHTML = reviews.map(r => `
-          <div class="review-item">
-            <div class="review-header">
-              <span class="review-author">${r.author}</span>
-              ${r.rating ? `<span class="review-rating">★ ${r.rating}</span>` : ''}
-            </div>
-            <p class="review-content">${r.content}</p>
-            ${r.content.length > 200 ? '<button class="review-toggle" onclick="toggleReview(this)">続きを読む</button>' : ''}
-            <p class="review-date">${r.created_at ? new Date(r.created_at).toLocaleDateString('ja-JP') : ''}</p>
-          </div>
-        `).join('');
-        reviewsSection.style.display = 'block';
-      } else {
-        reviewsSection.style.display = 'none';
-      }
+        revCon.innerHTML = reviews.map(r => '<div class="review-item"><div class="review-header"><span class="review-author">' + r.author + '</span>' + (r.rating ? '<span class="review-rating">★ ' + r.rating + '</span>' : '') + '</div><p class="review-content">' + r.content + '</p>' + (r.content.length > 200 ? '<button class="review-toggle" onclick="toggleReview(this)">続きを読む</button>' : '') + '</div>').join('');
+        revSec.style.display = 'block';
+      } else { revSec.style.display = 'none'; }
 
-      // Render TMDb similar movies
-      const tmdbSimilarSection = document.getElementById('tmdb-similar-section');
-      const tmdbSimilarContent = document.getElementById('tmdb-similar-content');
       const tmdbSimilar = m.tmdbSimilar || [];
+      const tmdbSec = document.getElementById('tmdb-similar-section');
+      const tmdbCon = document.getElementById('tmdb-similar-content');
       if (tmdbSimilar.length > 0) {
-        tmdbSimilarContent.innerHTML = tmdbSimilar.map(sm => {
-          const poster = sm.poster_path
-            ? `${TMDB_IMAGE_BASE}${sm.poster_path}`
-            : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="%23333" width="200" height="300"/></svg>';
-          return `
-            <div class="similar-movie" onclick="openModal(${sm.id})">
-              <img src="${poster}" alt="${sm.title}" loading="lazy">
-              <p>${sm.title_ja || sm.title}</p>
-            </div>
-          `;
+        tmdbCon.innerHTML = tmdbSimilar.map(sm => {
+          const p = sm.poster_path ? TMDB_IMAGE_BASE + sm.poster_path : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="%23333" width="200" height="300"/></svg>';
+          return '<div class="similar-movie" onclick="openModal(' + sm.id + ')"><img src="' + p + '" alt="' + sm.title + '" loading="lazy"><p>' + (sm.title_ja || sm.title) + '</p></div>';
         }).join('');
-        tmdbSimilarSection.style.display = 'block';
-      } else {
-        tmdbSimilarSection.style.display = 'none';
-      }
+        tmdbSec.style.display = 'block';
+      } else { tmdbSec.style.display = 'none'; }
 
-      // Render AI similar movies
       const similarMovies = similarData.movies || [];
       document.getElementById('similar-movies').innerHTML = similarMovies.map(sm => {
-        const poster = sm.poster_path
-          ? `${TMDB_IMAGE_BASE}${sm.poster_path}`
-          : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="%23333" width="200" height="300"/></svg>';
-        return `
-          <div class="similar-movie" onclick="openModal(${sm.id})">
-            <img src="${poster}" alt="${sm.title}" loading="lazy">
-            <p>${sm.title_ja || sm.title}</p>
-          </div>
-        `;
+        const p = sm.poster_path ? TMDB_IMAGE_BASE + sm.poster_path : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="%23333" width="200" height="300"/></svg>';
+        return '<div class="similar-movie" onclick="openModal(' + sm.id + ')"><img src="' + p + '" alt="' + sm.title + '" loading="lazy"><p>' + (sm.title_ja || sm.title) + '</p></div>';
       }).join('') || '<p style="color:#888">類似映画が見つかりません</p>';
 
       document.getElementById('modal').classList.add('active');
@@ -986,56 +560,32 @@
       document.body.style.overflow = '';
     }
 
-    document.getElementById('modal').addEventListener('click', (e) => {
-      if (e.target.id === 'modal') closeModal();
-    });
+    document.getElementById('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
+    document.getElementById('video-modal').addEventListener('click', (e) => { if (e.target.id === 'video-modal') closeVideoModal(); });
 
     let searchTimeout;
     document.getElementById('search').addEventListener('input', (e) => {
       clearTimeout(searchTimeout);
       searchTimeout = setTimeout(() => {
         currentSearch = e.target.value;
-        currentPage = 1;
+        if (currentSearch) {
+          currentGenre = '';
+          document.querySelectorAll('.genre-tag-btn').forEach(btn => btn.classList.remove('active'));
+        }
         loadMovies();
       }, 500);
     });
 
-    document.getElementById('genre').addEventListener('change', (e) => {
-      currentGenre = e.target.value;
-      currentPage = 1;
-      if (searchMode === 'text') {
-        loadMovies();
-      }
-    });
-
-    document.querySelectorAll('input[name="mode"]').forEach(radio => {
-      radio.addEventListener('change', (e) => {
-        searchMode = e.target.value;
-        currentPage = 1;
-        // Disable genre filter for semantic search
-        document.getElementById('genre').disabled = searchMode === 'semantic';
-        if (currentSearch || searchMode === 'text') {
-          loadMovies();
-        }
-      });
-    });
-
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        if (document.getElementById('video-modal').classList.contains('active')) {
-          closeVideoModal();
-        } else {
-          closeModal();
-        }
+        if (document.getElementById('video-modal').classList.contains('active')) closeVideoModal();
+        else closeModal();
       }
-    });
-
-    document.getElementById('video-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'video-modal') closeVideoModal();
     });
 
     loadGenres();
     loadMovies();
+    loadRecommendations();
   </script>
 </body>
 </html>
