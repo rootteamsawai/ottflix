@@ -1,0 +1,32 @@
+{
+  "name": "ottflix",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "fetch:movies": "tsx src/scripts/fetch-movies.ts",
+    "seed:movies": "tsx src/scripts/seed-movies.ts",
+    "generate:embeddings": "tsx src/scripts/generate-embeddings.ts",
+    "fetch:providers": "tsx src/scripts/fetch-providers.ts",
+    "fetch:extended": "tsx src/scripts/fetch-extended-data.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "better-sqlite3": "^11.7.0",
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.38.3",
+    "hono": "^4.6.16",
+    "openai": "^4.77.0",
+    "sqlite-vec": "^0.1.6"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.5",
+    "drizzle-kit": "^0.30.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
