@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>AI映画診断 - OTTflix</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      scrollbar-width: none;
+    }
+    html::-webkit-scrollbar, body::-webkit-scrollbar {
+      display: none;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* Main Layout - Single Column */
+    .app-container {
+      max-width: 800px;
+      margin: 0 auto;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: #0a0a0a;
+    }
+
+    /* Header */
+    .chat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      padding-top: calc(1rem + env(safe-area-inset-top));
+      background: #0a0a0a;
+      border-bottom: 1px solid #1a1a1a;
+      flex-shrink: 0;
+    }
+    .chat-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .back-link {
+      color: #888;
+      text-decoration: none;
+      font-size: 1.25rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #fff; }
+    .chat-header h1 {
+      font-size: 1.1rem;
+      color: #fff;
+      font-weight: 600;
+    }
+    .chat-reset {
+      background: transparent;
+      border: 1px solid #333;
+      color: #888;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .chat-reset:hover { border-color: #555; color: #fff; }
+
+    /* Messages area */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .chat-messages::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Message styles */
+    .chat-message {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .chat-message.user {
+      align-items: flex-end;
+    }
+    .chat-message.assistant {
+      align-items: flex-start;
+    }
+    .message-content {
+      max-width: 85%;
+      padding: 1rem 1.25rem;
+      border-radius: 1.25rem;
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+    .chat-message.user .message-content {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border-bottom-right-radius: 0.25rem;
+    }
+    .chat-message.assistant .message-content {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      border-bottom-left-radius: 0.25rem;
+    }
+
+    /* Movie Carousel */
+    .movie-carousel {
+      width: 100%;
+      max-width: 100%;
+      overflow: hidden;
+    }
+    .movie-carousel-inner {
+      display: flex;
+      gap: 0.75rem;
+      overflow-x: auto;
+      padding: 0.5rem 0;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .movie-carousel-inner::-webkit-scrollbar {
+      display: none;
+    }
+    .movie-card {
+      flex-shrink: 0;
+      width: 140px;
+      background: #141414;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      scroll-snap-align: start;
+      border: 2px solid transparent;
+    }
+    .movie-card:hover {
+      transform: scale(1.03);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+    }
+    .movie-card:active {
+      transform: scale(0.98);
+    }
+    .movie-card img {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      background: #222;
+    }
+    .movie-card-info {
+      padding: 0.6rem 0.75rem;
+    }
+    .movie-card-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.2rem;
+    }
+    .movie-card-meta {
+      font-size: 0.7rem;
+      color: #888;
+      display: flex;
+      justify-content: space-between;
+    }
+    .movie-card-rating { color: #ffc107; }
+
+    /* Typing indicator */
+    .chat-typing {
+      display: flex;
+      gap: 5px;
+      padding: 1rem 1.25rem;
+      background: #1a1a1a;
+      border-radius: 1.25rem;
+      border-bottom-left-radius: 0.25rem;
+      max-width: 80px;
+    }
+    .chat-typing span {
+      width: 8px;
+      height: 8px;
+      background: #444;
+      border-radius: 50%;
+      animation: typing 1.4s infinite ease-in-out both;
+    }
+    .chat-typing span:nth-child(1) { animation-delay: -0.32s; }
+    .chat-typing span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes typing {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Input area */
+    .chat-input-area {
+      padding: 1rem 1.5rem;
+      padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+      background: #0a0a0a;
+      border-top: 1px solid #1a1a1a;
+      flex-shrink: 0;
+    }
+    .chat-input-wrapper {
+      display: flex;
+      gap: 0.75rem;
+      background: #1a1a1a;
+      border-radius: 1.5rem;
+      padding: 0.5rem;
+      border: 1px solid #2a2a2a;
+      transition: border-color 0.2s;
+    }
+    .chat-input-wrapper:focus-within {
+      border-color: #667eea;
+    }
+    .chat-input-wrapper input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: none;
+      background: transparent;
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+    }
+    .chat-input-wrapper input::placeholder { color: #666; }
+    .chat-send-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .chat-send-btn:hover { opacity: 0.9; }
+    .chat-send-btn:active { transform: scale(0.95); }
+    .chat-send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Movie Modal */
+    .movie-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .movie-modal.active { display: flex; }
+    .movie-modal-content {
+      background: #141414;
+      border-radius: 16px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+    .movie-modal-poster {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      border-radius: 16px 16px 0 0;
+    }
+    .movie-modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: rgba(0,0,0,0.6);
+      border: none;
+      color: #fff;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .movie-modal-close:hover { background: rgba(0,0,0,0.8); }
+    .movie-modal-body {
+      padding: 1.5rem;
+    }
+    .movie-modal-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+    .movie-modal-title-sub {
+      font-size: 0.9rem;
+      color: #888;
+      margin-bottom: 1rem;
+    }
+    .movie-modal-meta {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      color: #888;
+      font-size: 0.9rem;
+    }
+    .movie-modal-meta .rating { color: #ffc107; }
+    .movie-modal-genres {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .genre-tag {
+      background: #2a2a2a;
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      color: #aaa;
+    }
+    .movie-modal-overview {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: #ccc;
+      margin-bottom: 1.5rem;
+    }
+    .movie-modal-btn {
+      width: 100%;
+      padding: 1rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .movie-modal-btn:hover { opacity: 0.9; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .chat-messages { padding: 1rem; }
+      .message-content { max-width: 90%; font-size: 0.9rem; }
+      .movie-card { width: 120px; }
+      .movie-card-info { padding: 0.5rem; }
+      .movie-card-title { font-size: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <header class="chat-header">
+      <div class="chat-header-left">
+        <a href="/" class="back-link">←</a>
+        <h1>AI映画診断</h1>
+      </div>
+      <button class="chat-reset" onclick="resetChat()" title="リセット">↺</button>
+    </header>
+
+    <div class="chat-messages" id="chat-messages"></div>
+
+    <div class="chat-input-area">
+      <div class="chat-input-wrapper">
+        <input type="text" id="chat-input" placeholder="どんな映画が見たいですか？" onkeypress="handleKeypress(event)">
+        <button class="chat-send-btn" id="send-btn" onclick="sendChat()">↑</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Movie Detail Modal -->
+  <div class="movie-modal" id="movie-modal" onclick="closeModal(event)">
+    <div class="movie-modal-content" onclick="event.stopPropagation()">
+      <button class="movie-modal-close" onclick="closeModal()">×</button>
+      <div id="movie-modal-inner"></div>
+    </div>
+  </div>
+
+  <script>
+    const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+    let chatMessages = [];
+    let isSending = false;
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function getTitle(movie) {
+      return movie.title_ja || movie.title;
+    }
+
+    // Initialize
+    function initChat() {
+      addMessage('assistant', 'こんにちは！今日はどんな気分ですか？見たい映画のジャンルや雰囲気を教えてください。');
+      document.getElementById('chat-input').focus();
+    }
+
+    function resetChat() {
+      chatMessages = [];
+      document.getElementById('chat-messages').innerHTML = '';
+      initChat();
+    }
+
+    function addMessage(role, content, movies = []) {
+      if (role !== 'typing') {
+        chatMessages.push({ role, content });
+      }
+
+      const container = document.getElementById('chat-messages');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'chat-message ' + role;
+
+      if (role === 'typing') {
+        msgDiv.id = 'typing-indicator';
+        msgDiv.innerHTML = '<div class="chat-typing"><span></span><span></span><span></span></div>';
+      } else {
+        let html = '<div class="message-content">' + escapeHtml(content) + '</div>';
+
+        // Add movie carousel if there are recommendations
+        if (movies && movies.length > 0) {
+          html += '<div class="movie-carousel"><div class="movie-carousel-inner">';
+          movies.forEach(movie => {
+            const poster = movie.poster_path
+              ? TMDB_IMAGE_BASE + movie.poster_path
+              : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="%23222" width="200" height="300"/><text x="100" y="150" text-anchor="middle" fill="%23444" font-size="14">No Image</text></svg>';
+            const title = getTitle(movie);
+            const year = movie.release_date ? movie.release_date.split('-')[0] : '';
+            html += `
+              <div class="movie-card" onclick="showMovieDetail(${movie.id})">
+                <img src="${poster}" alt="${escapeHtml(title)}" loading="lazy">
+                <div class="movie-card-info">
+                  <div class="movie-card-title">${escapeHtml(title)}</div>
+                  <div class="movie-card-meta">
+                    <span>${year}</span>
+                    <span class="movie-card-rating">★ ${movie.vote_average?.toFixed(1) || '-'}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+          html += '</div></div>';
+        }
+
+        msgDiv.innerHTML = html;
+      }
+
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+      const typing = document.getElementById('typing-indicator');
+      if (typing) typing.remove();
+    }
+
+    async function sendChat() {
+      if (isSending) return;
+
+      const input = document.getElementById('chat-input');
+      const message = input.value.trim();
+      if (!message) return;
+
+      input.value = '';
+      addMessage('user', message);
+
+      isSending = true;
+      document.getElementById('send-btn').disabled = true;
+      addMessage('typing');
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: chatMessages })
+        });
+
+        removeTypingIndicator();
+
+        if (!response.ok) throw new Error('Request failed');
+
+        const data = await response.json();
+        const movies = data.recommendations || (data.recommendation ? [data.recommendation] : []);
+        addMessage('assistant', data.message, movies);
+      } catch (error) {
+        removeTypingIndicator();
+        addMessage('assistant', 'すみません、エラーが発生しました。もう一度お試しください。');
+        console.error('Chat error:', error);
+      } finally {
+        isSending = false;
+        document.getElementById('send-btn').disabled = false;
+        input.focus();
+      }
+    }
+
+    function handleKeypress(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChat();
+      }
+    }
+
+    async function showMovieDetail(id) {
+      try {
+        const res = await fetch(`/api/movies/${id}/full`);
+        const movie = await res.json();
+        renderModal(movie);
+      } catch (error) {
+        console.error('Failed to load movie:', error);
+      }
+    }
+
+    function renderModal(movie) {
+      const genres = movie.genres ? JSON.parse(movie.genres) : [];
+      const title = getTitle(movie);
+      const subTitle = movie.title !== movie.title_ja ? (movie.title_ja ? movie.title : movie.title_ja) : null;
+      const overview = movie.overview_ja || movie.overview || '概要なし';
+      const poster = movie.poster_path ? TMDB_IMAGE_BASE + movie.poster_path : '';
+
+      document.getElementById('movie-modal-inner').innerHTML = `
+        ${poster ? `<img class="movie-modal-poster" src="${poster}" alt="">` : ''}
+        <div class="movie-modal-body">
+          <h2 class="movie-modal-title">${escapeHtml(title)}</h2>
+          ${subTitle ? `<p class="movie-modal-title-sub">${escapeHtml(subTitle)}</p>` : ''}
+          <div class="movie-modal-meta">
+            <span>${movie.release_date || '不明'}</span>
+            <span>${movie.runtime ? movie.runtime + '分' : ''}</span>
+            <span class="rating">★ ${movie.vote_average?.toFixed(1) || '-'}</span>
+          </div>
+          <div class="movie-modal-genres">
+            ${genres.map(g => `<span class="genre-tag">${g}</span>`).join('')}
+          </div>
+          <p class="movie-modal-overview">${escapeHtml(overview)}</p>
+          <button class="movie-modal-btn" onclick="openMainPage(${movie.id})">詳細ページを見る</button>
+        </div>
+      `;
+
+      document.getElementById('movie-modal').classList.add('active');
+    }
+
+    function closeModal(e) {
+      if (!e || e.target === document.getElementById('movie-modal')) {
+        document.getElementById('movie-modal').classList.remove('active');
+      }
+    }
+
+    function openMainPage(id) {
+      sessionStorage.setItem('ottflix-open-movie', id);
+      window.location.href = '/';
+    }
+
+    // Escape key to close modal
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    // Initialize
+    initChat();
+  </script>
+</body>
+</html>

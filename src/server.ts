@@ -9,6 +9,28 @@ import {
   fuzzyMatchTitle,
   type Movie,
 } from "./services/personalization.js";
+import { generateChatResponse, type ChatMessage } from "./services/chat.js";
+import {
+  getAuthUrl,
+  handleCallback,
+  getUserFromToken,
+  getUserById,
+  type User,
+} from "./services/auth.js";
+import {
+  getOrCreateOnboardingSession,
+  processOnboardingChat,
+  completeOnboarding,
+  getOnboardingHistory,
+} from "./services/onboarding.js";
+import {
+  trackInteraction,
+  getUserInteractions,
+  getInteractionStats,
+  updateUserEmbeddingFromBehavior,
+  shouldUpdateEmbedding,
+  type InteractionType,
+} from "./services/learning.js";
 
 const app = new Hono();
 
@@ -47,8 +69,8 @@ app.get("/api/movies", (c) => {
   const { count } = countStmt.get(...params) as { count: number };
 
   const stmt = sqliteDb.prepare(`
-    SELECT id, tmdb_id, title, title_ja, overview_ja, genres,
-           release_date, runtime, popularity, vote_average, poster_path
+    SELECT id, tmdb_id, title, title_ja, overview, overview_ja, genres,
+           release_date, runtime, popularity, vote_average, poster_path, poster_path_en
     FROM movies
     WHERE ${whereClause}
     ORDER BY popularity DESC
@@ -106,7 +128,7 @@ app.get("/api/genres", (c) => {
   return c.json([...genreSet].sort());
 });
 
-// API: Semantic search using vector similarity
+// API: Semantic search using vector similarity (with optional personalization)
 app.get("/api/search", async (c) => {
   const query = c.req.query("q") || "";
   const limit = parseInt(c.req.query("limit") || "20");
@@ -118,21 +140,63 @@ app.get("/api/search", async (c) => {
   try {
     // Generate embedding for the search query
     const queryEmbedding = await generateEmbedding(query);
-    const queryBlob = serializeFloat32(queryEmbedding);
+
+    // Check if user is authenticated and has preference embedding
+    const user = getUserFromToken(c.req.header("Authorization"));
+    let searchEmbedding: number[];
+
+    if (user && user.preference_embedding) {
+      // Combine query embedding with user preference embedding
+      // Query: 70%, User preference: 30%
+      const QUERY_WEIGHT = 0.7;
+      const USER_WEIGHT = 0.3;
+
+      const userEmbedding: number[] = [];
+      for (let i = 0; i < queryEmbedding.length; i++) {
+        userEmbedding.push(user.preference_embedding.readFloatLE(i * 4));
+      }
+
+      searchEmbedding = queryEmbedding.map((qVal, i) =>
+        qVal * QUERY_WEIGHT + userEmbedding[i]! * USER_WEIGHT
+      );
+
+      // Normalize the combined embedding
+      let magnitude = 0;
+      for (const val of searchEmbedding) {
+        magnitude += val * val;
+      }
+      magnitude = Math.sqrt(magnitude);
+      if (magnitude > 0) {
+        searchEmbedding = searchEmbedding.map((val) => val / magnitude);
+      }
+    } else {
+      searchEmbedding = queryEmbedding;
+    }
+
+    const searchBlob = serializeFloat32(searchEmbedding);
 
     // Find similar movies using vector search
     const results = sqliteDb.prepare(`
       SELECT
-        m.id, m.tmdb_id, m.title, m.title_ja, m.overview_ja, m.genres,
-        m.release_date, m.runtime, m.popularity, m.vote_average, m.poster_path,
+        m.id, m.tmdb_id, m.title, m.title_ja, m.overview, m.overview_ja, m.genres,
+        m.release_date, m.runtime, m.popularity, m.vote_average, m.poster_path, m.poster_path_en,
         e.distance
       FROM movie_embeddings e
       JOIN movies m ON m.id = e.rowid
       WHERE e.embedding MATCH ? AND k = ?
       ORDER BY e.distance
-    `).all(queryBlob, limit);
+    `).all(searchBlob, limit);
 
-    return c.json({ movies: results, query });
+    // Track search interaction if user is authenticated
+    if (user) {
+      trackInteraction(user.id, "search", undefined, query);
+    }
+
+    return c.json({
+      movies: results,
+      query,
+      personalized: !!(user && user.preference_embedding),
+    });
   } catch (error) {
     console.error("Search error:", error);
     return c.json({ error: "Search failed" }, 500);
@@ -156,8 +220,8 @@ app.get("/api/movies/:id/similar", (c) => {
   // Find similar movies (fetch extra to filter out the source movie)
   const results = sqliteDb.prepare(`
     SELECT
-      m.id, m.tmdb_id, m.title, m.title_ja, m.overview_ja, m.genres,
-      m.release_date, m.runtime, m.vote_average, m.poster_path,
+      m.id, m.tmdb_id, m.title, m.title_ja, m.overview, m.overview_ja, m.genres,
+      m.release_date, m.runtime, m.vote_average, m.poster_path, m.poster_path_en,
       e.distance
     FROM movie_embeddings e
     JOIN movies m ON m.id = e.rowid
@@ -183,7 +247,7 @@ app.get("/api/movies/:id/credits", (c) => {
 
   // Get cast
   const cast = sqliteDb.prepare(`
-    SELECT p.tmdb_id, p.name, p.profile_path, mc.character, mc.cast_order
+    SELECT p.tmdb_id, p.name, p.name_en, p.profile_path, mc.character, mc.cast_order
     FROM movie_cast mc
     JOIN people p ON p.id = mc.person_id
     WHERE mc.movie_id = ?
@@ -192,7 +256,7 @@ app.get("/api/movies/:id/credits", (c) => {
 
   // Get crew
   const crew = sqliteDb.prepare(`
-    SELECT p.tmdb_id, p.name, p.profile_path, mc.department, mc.job
+    SELECT p.tmdb_id, p.name, p.name_en, p.profile_path, mc.department, mc.job
     FROM movie_crew mc
     JOIN people p ON p.id = mc.person_id
     WHERE mc.movie_id = ?
@@ -207,7 +271,7 @@ app.get("/api/movies/:id/videos", (c) => {
   const id = c.req.param("id");
 
   const videos = sqliteDb.prepare(`
-    SELECT video_key, name, site, video_type, official
+    SELECT video_key, video_key_en, name, name_en, site, video_type, official
     FROM movie_videos
     WHERE movie_id = ?
     ORDER BY official DESC, video_type ASC
@@ -248,7 +312,7 @@ app.get("/api/movies/:id/tmdb-similar", (c) => {
   const movies = [];
   for (const sim of similarTmdbIds) {
     const movie = sqliteDb.prepare(`
-      SELECT id, tmdb_id, title, title_ja, poster_path, vote_average
+      SELECT id, tmdb_id, title, title_ja, overview, overview_ja, poster_path, poster_path_en, vote_average
       FROM movies
       WHERE tmdb_id = ?
     `).get(sim.similar_tmdb_id);
@@ -310,7 +374,7 @@ app.get("/api/movies/:id/full", async (c) => {
 
   // Get credits
   const cast = sqliteDb.prepare(`
-    SELECT p.tmdb_id, p.name, p.profile_path, mc.character, mc.cast_order
+    SELECT p.tmdb_id, p.name, p.name_en, p.profile_path, mc.character, mc.cast_order
     FROM movie_cast mc
     JOIN people p ON p.id = mc.person_id
     WHERE mc.movie_id = ?
@@ -318,7 +382,7 @@ app.get("/api/movies/:id/full", async (c) => {
   `).all(id);
 
   const crew = sqliteDb.prepare(`
-    SELECT p.tmdb_id, p.name, p.profile_path, mc.department, mc.job
+    SELECT p.tmdb_id, p.name, p.name_en, p.profile_path, mc.department, mc.job
     FROM movie_crew mc
     JOIN people p ON p.id = mc.person_id
     WHERE mc.movie_id = ?
@@ -327,7 +391,7 @@ app.get("/api/movies/:id/full", async (c) => {
 
   // Get videos
   const videos = sqliteDb.prepare(`
-    SELECT video_key, name, site, video_type, official
+    SELECT video_key, video_key_en, name, name_en, site, video_type, official
     FROM movie_videos
     WHERE movie_id = ?
     ORDER BY official DESC, video_type ASC
@@ -349,7 +413,7 @@ app.get("/api/movies/:id/full", async (c) => {
   const tmdbSimilar = [];
   for (const sim of similarTmdbIds) {
     const m = sqliteDb.prepare(`
-      SELECT id, tmdb_id, title, title_ja, poster_path, vote_average FROM movies WHERE tmdb_id = ?
+      SELECT id, tmdb_id, title, title_ja, poster_path, poster_path_en, vote_average FROM movies WHERE tmdb_id = ?
     `).get(sim.similar_tmdb_id);
     if (m) tmdbSimilar.push(m);
   }
@@ -428,7 +492,7 @@ app.post("/api/history/upload", async (c) => {
 
     // Get all movies for matching
     const allMovies = sqliteDb
-      .prepare(`SELECT id, tmdb_id, title, title_ja, poster_path, vote_average, genres FROM movies`)
+      .prepare(`SELECT id, tmdb_id, title, title_ja, poster_path, poster_path_en, vote_average, genres FROM movies`)
       .all() as Movie[];
 
     // Clear existing history for this session
@@ -500,7 +564,7 @@ app.get("/api/history/:sessionId", (c) => {
   const history = sqliteDb
     .prepare(
       `SELECT h.id, h.netflix_title, h.watch_date, h.matched, h.movie_id,
-              m.title, m.title_ja, m.poster_path
+              m.title, m.title_ja, m.poster_path, m.poster_path_en
        FROM user_watch_history h
        LEFT JOIN movies m ON m.id = h.movie_id
        WHERE h.session_id = ?
@@ -555,7 +619,7 @@ app.get("/api/recommendations/:sessionId", (c) => {
   // 3. Find similar movies using preference embedding (fetch extra to filter)
   const candidates = sqliteDb
     .prepare(
-      `SELECT m.id, m.tmdb_id, m.title, m.title_ja, m.poster_path,
+      `SELECT m.id, m.tmdb_id, m.title, m.title_ja, m.poster_path, m.poster_path_en,
               m.vote_average, m.genres, e.distance
        FROM movie_embeddings e
        JOIN movies m ON m.id = e.rowid
@@ -577,6 +641,226 @@ app.get("/api/recommendations/:sessionId", (c) => {
     recommendations,
     movieCount: pref.movie_count,
   });
+});
+
+// ============================================
+// Chat API Endpoint (Akinator-style movie diagnosis)
+// ============================================
+
+app.post("/api/chat", async (c) => {
+  try {
+    const { messages } = await c.req.json<{ messages: ChatMessage[] }>();
+
+    if (!messages || !Array.isArray(messages)) {
+      return c.json({ error: "messages is required" }, 400);
+    }
+
+    const response = await generateChatResponse(messages);
+    return c.json(response);
+  } catch (error) {
+    console.error("Chat error:", error);
+    return c.json({ error: "Chat failed" }, 500);
+  }
+});
+
+// ============================================
+// Authentication API Endpoints
+// ============================================
+
+// GET /api/auth/google - Start Google OAuth flow
+app.get("/api/auth/google", (c) => {
+  const authUrl = getAuthUrl();
+  return c.redirect(authUrl);
+});
+
+// GET /api/auth/callback - Handle OAuth callback
+app.get("/api/auth/callback", async (c) => {
+  try {
+    const code = c.req.query("code");
+    if (!code) {
+      return c.redirect("/?error=no_code");
+    }
+
+    const { token, user, isNewUser } = await handleCallback(code);
+
+    // Redirect to frontend with token and user info
+    const redirectUrl = isNewUser && !user.onboarding_completed
+      ? `/?token=${token}&onboarding=true`
+      : `/?token=${token}`;
+
+    return c.redirect(redirectUrl);
+  } catch (error) {
+    console.error("Auth callback error:", error);
+    return c.redirect("/?error=auth_failed");
+  }
+});
+
+// GET /api/auth/me - Get current user
+app.get("/api/auth/me", (c) => {
+  const user = getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  return c.json({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    picture: user.picture,
+    onboarding_completed: user.onboarding_completed === 1,
+    has_preference: user.preference_embedding !== null,
+  });
+});
+
+// POST /api/auth/logout - Logout (client-side token removal)
+app.post("/api/auth/logout", (c) => {
+  // Token invalidation would require server-side token storage
+  // For simplicity, we just return success and let the client clear the token
+  return c.json({ success: true });
+});
+
+// ============================================
+// Onboarding API Endpoints
+// ============================================
+
+// GET /api/onboarding - Get onboarding session
+app.get("/api/onboarding", async (c) => {
+  const user = getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  try {
+    const messages = await getOrCreateOnboardingSession(user.id);
+    return c.json({
+      messages,
+      isComplete: user.onboarding_completed === 1,
+    });
+  } catch (error) {
+    console.error("Onboarding error:", error);
+    return c.json({ error: "Failed to get onboarding session" }, 500);
+  }
+});
+
+// POST /api/onboarding/chat - Process onboarding chat
+app.post("/api/onboarding/chat", async (c) => {
+  const user = getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  try {
+    const { message } = await c.req.json<{ message: string }>();
+
+    if (!message) {
+      return c.json({ error: "Message is required" }, 400);
+    }
+
+    const result = await processOnboardingChat(user.id, message);
+    return c.json(result);
+  } catch (error) {
+    console.error("Onboarding chat error:", error);
+    return c.json({ error: "Failed to process chat" }, 500);
+  }
+});
+
+// POST /api/onboarding/complete - Complete onboarding and generate embedding
+app.post("/api/onboarding/complete", async (c) => {
+  const user = getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  try {
+    await completeOnboarding(user.id);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Onboarding complete error:", error);
+    return c.json({ error: "Failed to complete onboarding" }, 500);
+  }
+});
+
+// ============================================
+// User Interaction Tracking API Endpoints
+// ============================================
+
+// POST /api/interactions - Track user interaction
+app.post("/api/interactions", async (c) => {
+  const user = getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  try {
+    const { type, movieId, queryText } = await c.req.json<{
+      type: InteractionType;
+      movieId?: number;
+      queryText?: string;
+    }>();
+
+    if (!type) {
+      return c.json({ error: "Interaction type is required" }, 400);
+    }
+
+    const validTypes: InteractionType[] = ["search", "view", "favorite", "click"];
+    if (!validTypes.includes(type)) {
+      return c.json({ error: "Invalid interaction type" }, 400);
+    }
+
+    trackInteraction(user.id, type, movieId, queryText);
+
+    // Check if we should update the embedding
+    if (shouldUpdateEmbedding(user.id)) {
+      // Update embedding asynchronously
+      updateUserEmbeddingFromBehavior(user.id).catch((err) => {
+        console.error("Failed to update embedding from behavior:", err);
+      });
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Track interaction error:", error);
+    return c.json({ error: "Failed to track interaction" }, 500);
+  }
+});
+
+// GET /api/interactions/stats - Get user interaction statistics
+app.get("/api/interactions/stats", (c) => {
+  const user = getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  try {
+    const stats = getInteractionStats(user.id);
+    return c.json(stats);
+  } catch (error) {
+    console.error("Get stats error:", error);
+    return c.json({ error: "Failed to get statistics" }, 500);
+  }
+});
+
+// POST /api/interactions/update-embedding - Manually trigger embedding update
+app.post("/api/interactions/update-embedding", async (c) => {
+  const user = getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  try {
+    const updated = await updateUserEmbeddingFromBehavior(user.id);
+    return c.json({ success: true, updated });
+  } catch (error) {
+    console.error("Update embedding error:", error);
+    return c.json({ error: "Failed to update embedding" }, 500);
+  }
 });
 
 // Serve static files from public directory

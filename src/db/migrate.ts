@@ -173,6 +173,36 @@ function migrate() {
     `);
     console.log("Indexes for new tables created");
 
+    // Add English columns to movie_videos table for multilingual support
+    try {
+      sqliteDb.exec(`ALTER TABLE movie_videos ADD COLUMN name_en TEXT`);
+      console.log("Added name_en column to movie_videos");
+    } catch (e: any) {
+      if (!e.message.includes("duplicate column")) throw e;
+    }
+    try {
+      sqliteDb.exec(`ALTER TABLE movie_videos ADD COLUMN video_key_en TEXT`);
+      console.log("Added video_key_en column to movie_videos");
+    } catch (e: any) {
+      if (!e.message.includes("duplicate column")) throw e;
+    }
+
+    // Add English name column to people table for multilingual support
+    try {
+      sqliteDb.exec(`ALTER TABLE people ADD COLUMN name_en TEXT`);
+      console.log("Added name_en column to people");
+    } catch (e: any) {
+      if (!e.message.includes("duplicate column")) throw e;
+    }
+
+    // Add English poster path column to movies table for multilingual support
+    try {
+      sqliteDb.exec(`ALTER TABLE movies ADD COLUMN poster_path_en TEXT`);
+      console.log("Added poster_path_en column to movies");
+    } catch (e: any) {
+      if (!e.message.includes("duplicate column")) throw e;
+    }
+
     // Create user_watch_history table for Netflix history
     sqliteDb.exec(`
       CREATE TABLE IF NOT EXISTS user_watch_history (
@@ -204,6 +234,68 @@ function migrate() {
       )
     `);
     console.log("User preferences table created");
+
+    // Create users table for Google OAuth authentication
+    sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        google_id TEXT UNIQUE NOT NULL,
+        email TEXT NOT NULL,
+        name TEXT,
+        picture TEXT,
+        preference_embedding BLOB,
+        onboarding_completed INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    console.log("Users table created");
+
+    // Create indexes for users table
+    sqliteDb.exec(`
+      CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    `);
+    console.log("Users indexes created");
+
+    // Create user_interactions table for behavior tracking
+    sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS user_interactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        movie_id INTEGER REFERENCES movies(id),
+        interaction_type TEXT NOT NULL,
+        query_text TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    console.log("User interactions table created");
+
+    // Create indexes for user_interactions table
+    sqliteDb.exec(`
+      CREATE INDEX IF NOT EXISTS idx_user_interactions_user_id ON user_interactions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_user_interactions_movie_id ON user_interactions(movie_id);
+      CREATE INDEX IF NOT EXISTS idx_user_interactions_type ON user_interactions(interaction_type);
+    `);
+    console.log("User interactions indexes created");
+
+    // Create user_onboarding table for conversation history
+    sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS user_onboarding (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        messages TEXT NOT NULL,
+        embedding_generated INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+    console.log("User onboarding table created");
+
+    // Create index for user_onboarding table
+    sqliteDb.exec(`
+      CREATE INDEX IF NOT EXISTS idx_user_onboarding_user_id ON user_onboarding(user_id);
+    `);
+    console.log("User onboarding index created");
 
     console.log("Migrations completed successfully!");
   } catch (error) {
