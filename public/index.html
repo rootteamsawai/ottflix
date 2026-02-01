@@ -1258,10 +1258,34 @@
     }
 
     async function loginWithGoogle() {
+      // If Clerk not ready, try to wait for it
       if (!clerkInstance) {
-        console.error('Clerk not initialized');
-        return;
+        const btn = document.getElementById('login-btn');
+        btn.disabled = true;
+        btn.querySelector('span').textContent = '読み込み中...';
+
+        // Wait for Clerk to initialize
+        const clerk = await waitForClerk();
+        if (clerk && !clerkInstance) {
+          try {
+            await clerk.load();
+            clerkInstance = clerk;
+          } catch (e) {
+            console.error('Failed to load Clerk:', e);
+          }
+        }
+
+        btn.disabled = false;
+        btn.querySelector('span').textContent = 'ログイン';
+
+        if (!clerkInstance) {
+          alert(currentLang === 'ja'
+            ? 'ログイン機能の読み込みに失敗しました。ページを再読み込みしてください。'
+            : 'Failed to load login. Please refresh the page.');
+          return;
+        }
       }
+
       try {
         await clerkInstance.openSignIn({
           appearance: {

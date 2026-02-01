@@ -111,6 +111,11 @@ app.get("/api/movies/:id/providers", (c) => {
   return c.json(result);
 });
 
+// API: Health check / test endpoint
+app.get("/api/test-deploy", (c) => {
+  return c.json({ status: "ok", timestamp: new Date().toISOString(), version: "now-playing-v1" });
+});
+
 // API: Get genres
 app.get("/api/genres", (c) => {
   const stmt = sqliteDb.prepare(`SELECT genres FROM movies WHERE genres IS NOT NULL`);
