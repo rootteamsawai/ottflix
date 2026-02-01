@@ -235,11 +235,12 @@ function migrate() {
     `);
     console.log("User preferences table created");
 
-    // Create users table for Supabase authentication
+    // Create users table for Clerk authentication
     sqliteDb.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        supabase_id TEXT UNIQUE NOT NULL,
+        clerk_id TEXT UNIQUE,
+        supabase_id TEXT UNIQUE,
         email TEXT NOT NULL,
         name TEXT,
         picture TEXT,
@@ -251,16 +252,14 @@ function migrate() {
     `);
     console.log("Users table created");
 
-    // Migration: rename google_id to supabase_id if needed
+    // Migration: add clerk_id column if needed
     try {
-      // Check if google_id column exists and rename it
       const tableInfo = sqliteDb.prepare("PRAGMA table_info(users)").all() as any[];
-      const hasGoogleId = tableInfo.some(col => col.name === 'google_id');
-      const hasSupabaseId = tableInfo.some(col => col.name === 'supabase_id');
+      const hasClerkId = tableInfo.some(col => col.name === 'clerk_id');
 
-      if (hasGoogleId && !hasSupabaseId) {
-        sqliteDb.exec(`ALTER TABLE users RENAME COLUMN google_id TO supabase_id`);
-        console.log("Renamed google_id to supabase_id");
+      if (!hasClerkId) {
+        sqliteDb.exec(`ALTER TABLE users ADD COLUMN clerk_id TEXT`);
+        console.log("Added clerk_id column");
       }
     } catch (e: any) {
       console.log("Column migration check:", e.message);
@@ -268,13 +267,11 @@ function migrate() {
 
     // Create indexes for users table
     try {
+      sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_users_clerk_id ON users(clerk_id)`);
+    } catch (e: any) {}
+    try {
       sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_users_supabase_id ON users(supabase_id)`);
-    } catch (e: any) {
-      // Index might reference non-existent column or already exist
-      try {
-        sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id)`);
-      } catch {}
-    }
+    } catch (e: any) {}
     sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
     console.log("Users indexes created");
 
@@ -316,6 +313,90 @@ function migrate() {
       CREATE INDEX IF NOT EXISTS idx_user_onboarding_user_id ON user_onboarding(user_id);
     `);
     console.log("User onboarding index created");
+
+    // Create user_watched_movies table for tracking watched movies with ratings
+    sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS user_watched_movies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        movie_id INTEGER NOT NULL REFERENCES movies(id),
+        rating INTEGER CHECK(rating >= 1 AND rating <= 5),
+        watched_date TEXT DEFAULT (datetime('now')),
+        created_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(user_id, movie_id)
+      )
+    `);
+    console.log("User watched movies table created");
+
+    // Create indexes for user_watched_movies table
+    sqliteDb.exec(`
+      CREATE INDEX IF NOT EXISTS idx_user_watched_user_id ON user_watched_movies(user_id);
+      CREATE INDEX IF NOT EXISTS idx_user_watched_movie_id ON user_watched_movies(movie_id);
+    `);
+    console.log("User watched movies indexes created");
+
+    // Create user_dismissed_movies table for tracking movies user doesn't want to see
+    sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS user_dismissed_movies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        movie_id INTEGER NOT NULL REFERENCES movies(id),
+        reason TEXT,
+        dismissed_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(user_id, movie_id)
+      )
+    `);
+    console.log("User dismissed movies table created");
+
+    // Create indexes for user_dismissed_movies table
+    sqliteDb.exec(`
+      CREATE INDEX IF NOT EXISTS idx_user_dismissed_user_id ON user_dismissed_movies(user_id);
+      CREATE INDEX IF NOT EXISTS idx_user_dismissed_movie_id ON user_dismissed_movies(movie_id);
+    `);
+    console.log("User dismissed movies indexes created");
+
+    // Add region column to watch_providers table
+    try {
+      sqliteDb.exec(`ALTER TABLE watch_providers ADD COLUMN region TEXT DEFAULT 'JP'`);
+      console.log("Added region column to watch_providers");
+    } catch (e: any) {
+      if (!e.message.includes("duplicate column")) throw e;
+    }
+
+    // Recreate watch_providers table with updated UNIQUE constraint (including region)
+    const tableInfo = sqliteDb.prepare("PRAGMA table_info(watch_providers)").all() as any[];
+    const hasRegion = tableInfo.some((col: any) => col.name === 'region');
+
+    if (hasRegion) {
+      // Check if we need to update the UNIQUE constraint by checking for existing index
+      const indexInfo = sqliteDb.prepare("PRAGMA index_list(watch_providers)").all() as any[];
+      const needsUpdate = !indexInfo.some((idx: any) => {
+        const cols = sqliteDb.prepare(`PRAGMA index_info("${idx.name}")`).all() as any[];
+        return cols.length === 4 && cols.some((c: any) => c.name === 'region');
+      });
+
+      if (needsUpdate) {
+        console.log("Updating watch_providers table with region in UNIQUE constraint...");
+        sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS watch_providers_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            movie_id INTEGER NOT NULL REFERENCES movies(id),
+            provider_name TEXT NOT NULL,
+            provider_type TEXT NOT NULL,
+            logo_path TEXT,
+            region TEXT NOT NULL DEFAULT 'JP',
+            UNIQUE(movie_id, provider_name, provider_type, region)
+          );
+          INSERT OR IGNORE INTO watch_providers_new (movie_id, provider_name, provider_type, logo_path, region)
+          SELECT movie_id, provider_name, provider_type, logo_path, COALESCE(region, 'JP') FROM watch_providers;
+          DROP TABLE watch_providers;
+          ALTER TABLE watch_providers_new RENAME TO watch_providers;
+          CREATE INDEX IF NOT EXISTS idx_watch_providers_movie_id ON watch_providers(movie_id);
+          CREATE INDEX IF NOT EXISTS idx_watch_providers_region ON watch_providers(region);
+        `);
+        console.log("watch_providers table updated with region constraint");
+      }
+    }
 
     console.log("Migrations completed successfully!");
   } catch (error) {

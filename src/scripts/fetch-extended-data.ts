@@ -21,8 +21,10 @@ async function fetchExtendedData() {
 
   // Prepare insert statements
   const insertPerson = sqliteDb.prepare(`
-    INSERT OR IGNORE INTO people (tmdb_id, name, profile_path)
-    VALUES (?, ?, ?)
+    INSERT INTO people (tmdb_id, name, profile_path, name_en)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(tmdb_id) DO UPDATE SET
+      name_en = excluded.name_en
   `);
 
   const getPersonId = sqliteDb.prepare(`
@@ -40,8 +42,11 @@ async function fetchExtendedData() {
   `);
 
   const insertVideo = sqliteDb.prepare(`
-    INSERT OR IGNORE INTO movie_videos (movie_id, video_key, name, site, video_type, official)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO movie_videos (movie_id, video_key, name, site, video_type, official, name_en, video_key_en)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(movie_id, video_key) DO UPDATE SET
+      name_en = excluded.name_en,
+      video_key_en = excluded.video_key_en
   `);
 
   const insertReview = sqliteDb.prepare(`
@@ -71,11 +76,22 @@ async function fetchExtendedData() {
       // Fetch English tagline separately
       const englishDetails = await getMovieFullDetailsEnglish(movie.tmdb_id);
 
+      // Create maps of English names from English credits
+      const enCastMap = new Map<number, string>();
+      const enCrewMap = new Map<number, string>();
+      for (const member of englishDetails.credits?.cast || []) {
+        enCastMap.set(member.id, member.name);
+      }
+      for (const member of englishDetails.credits?.crew || []) {
+        enCrewMap.set(member.id, member.name);
+      }
+
       // Process cast (top 15)
       const cast = details.credits?.cast?.slice(0, 15) || [];
       for (const member of cast) {
-        // Insert person
-        insertPerson.run(member.id, member.name, member.profile_path);
+        // Insert person with English name
+        const nameEn = enCastMap.get(member.id) || null;
+        insertPerson.run(member.id, member.name, member.profile_path, nameEn);
         // Get person id
         const person = getPersonId.get(member.id) as { id: number } | undefined;
         if (person) {
@@ -89,7 +105,8 @@ async function fetchExtendedData() {
         importantJobs.includes(c.job)
       );
       for (const member of crew) {
-        insertPerson.run(member.id, member.name, member.profile_path);
+        const nameEn = enCrewMap.get(member.id) || null;
+        insertPerson.run(member.id, member.name, member.profile_path, nameEn);
         const person = getPersonId.get(member.id) as { id: number } | undefined;
         if (person) {
           insertCrew.run(movie.id, person.id, member.department, member.job);
@@ -97,17 +114,40 @@ async function fetchExtendedData() {
       }
 
       // Process videos (trailers and teasers only)
-      const videos = (details.videos?.results || [])
+      // Get Japanese videos
+      const jaVideos = (details.videos?.results || [])
         .filter((v) => v.site === "YouTube" && ["Trailer", "Teaser"].includes(v.type))
         .slice(0, 5);
-      for (const video of videos) {
+
+      // Get English videos
+      const enVideos = (englishDetails.videos?.results || [])
+        .filter((v) => v.site === "YouTube" && ["Trailer", "Teaser"].includes(v.type));
+
+      // Create a map of English videos by type for matching
+      const enVideoMap = new Map<string, { key: string; name: string }>();
+      for (const v of enVideos) {
+        // Use type as key to match similar videos
+        if (!enVideoMap.has(v.type)) {
+          enVideoMap.set(v.type, { key: v.key, name: v.name });
+        }
+      }
+
+      // If no Japanese videos, use English videos as primary
+      const primaryVideos = jaVideos.length > 0 ? jaVideos : enVideos.slice(0, 5);
+
+      for (const video of primaryVideos) {
+        // Try to find matching English video by type
+        const enVideo = enVideoMap.get(video.type);
+        const isEnglishPrimary = jaVideos.length === 0;
         insertVideo.run(
           movie.id,
           video.key,
           video.name,
           video.site,
           video.type,
-          video.official ? 1 : 0
+          video.official ? 1 : 0,
+          isEnglishPrimary ? null : (enVideo?.name || null),
+          isEnglishPrimary ? null : (enVideo?.key || null)
         );
       }
 

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>視聴済み映画 - owlnight</title>
+  <script
+    async
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_cHJpbWUtaGFyZS02MC5jbGVyay5hY2NvdW50cy5kZXYk"
+    src="https://prime-hare-60.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+    type="text/javascript"
+  ></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #141414;
+      color: #fff;
+      min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    .logo {
+      text-decoration: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+    .logo img {
+      height: 28px;
+      width: auto;
+    }
+    .logo:hover { opacity: 0.8; }
+    .back-link {
+      color: #888;
+      text-decoration: none;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .back-link:hover { color: #fff; }
+    main { padding: 2rem; }
+    .page-title {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: #e50914;
+    }
+    .page-subtitle {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+    }
+    .movie-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1.5rem;
+    }
+    .movie-card {
+      background: #1a1a1a;
+      border-radius: 8px;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+    .movie-card:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+    }
+    .movie-poster {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      background: #333;
+    }
+    .movie-info { padding: 0.75rem; }
+    .movie-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .movie-meta {
+      font-size: 0.75rem;
+      color: #888;
+      display: flex;
+      justify-content: space-between;
+    }
+    .movie-rating { color: #ffc107; }
+    .loading { text-align: center; padding: 2rem; color: #888; }
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #666;
+    }
+    .empty-state h2 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+      color: #888;
+    }
+    .empty-state p {
+      margin-bottom: 1.5rem;
+    }
+    .empty-state a {
+      color: #e50914;
+      text-decoration: none;
+    }
+    .empty-state a:hover {
+      text-decoration: underline;
+    }
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .user-profile:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #333;
+    }
+    .user-name {
+      font-size: 0.85rem;
+      color: #fff;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      header { padding: 0.75rem 1rem; }
+      .logo img { height: 22px; }
+      main { padding: 1rem; }
+      .movie-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.75rem; }
+      .movie-info { padding: 0.5rem; }
+      .movie-title { font-size: 0.8rem; }
+      .movie-meta { font-size: 0.65rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <a href="/" class="logo"><img src="/owlnight.png" alt="owlnight"></a>
+      <a href="/" class="back-link">&larr; ホームに戻る</a>
+    </div>
+    <div id="user-profile" class="user-profile" style="display:none">
+      <img class="user-avatar" id="user-avatar" src="" alt="">
+      <span class="user-name" id="user-name"></span>
+    </div>
+  </header>
+
+  <main>
+    <h1 class="page-title" id="page-title">視聴済み映画</h1>
+    <p class="page-subtitle" id="page-subtitle">読み込み中...</p>
+    <div class="movie-grid" id="movies"></div>
+    <div class="empty-state" id="empty-state" style="display:none">
+      <h2 id="empty-title">まだ視聴済みの映画がありません</h2>
+      <p id="empty-desc">映画を見たら「見た」ボタンで評価を記録しましょう</p>
+      <a href="/">映画を探す &rarr;</a>
+    </div>
+  </main>
+
+  <script>
+    const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+    let currentLang = localStorage.getItem('ottflix-lang') || 'ja';
+    let clerkInstance = null;
+    let currentUser = null;
+    let authToken = null;
+
+    // Wait for Clerk
+    function waitForClerk() {
+      return new Promise((resolve) => {
+        if (window.Clerk) {
+          resolve(window.Clerk);
+        } else {
+          const check = setInterval(() => {
+            if (window.Clerk) {
+              clearInterval(check);
+              resolve(window.Clerk);
+            }
+          }, 100);
+          setTimeout(() => {
+            clearInterval(check);
+            resolve(null);
+          }, 10000);
+        }
+      });
+    }
+
+    async function getAuthHeaders() {
+      if (clerkInstance && clerkInstance.session) {
+        try {
+          authToken = await clerkInstance.session.getToken();
+        } catch (e) {
+          authToken = null;
+        }
+      }
+      return authToken ? { 'Authorization': 'Bearer ' + authToken } : {};
+    }
+
+    async function initClerk() {
+      try {
+        const clerk = await waitForClerk();
+        if (!clerk) {
+          showLoginRequired();
+          return;
+        }
+
+        await clerk.load();
+        clerkInstance = clerk;
+
+        if (clerkInstance.user && clerkInstance.session) {
+          authToken = await clerkInstance.session.getToken();
+          await checkAuth();
+        } else {
+          showLoginRequired();
+        }
+      } catch (e) {
+        console.error('Failed to init Clerk:', e);
+        showLoginRequired();
+      }
+    }
+
+    async function checkAuth() {
+      if (!authToken) {
+        showLoginRequired();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: await getAuthHeaders()
+        });
+
+        if (res.ok) {
+          currentUser = await res.json();
+          updateUI();
+          loadWatchedMovies();
+        } else {
+          showLoginRequired();
+        }
+      } catch (e) {
+        showLoginRequired();
+      }
+    }
+
+    function updateUI() {
+      if (currentUser) {
+        document.getElementById('user-profile').style.display = 'flex';
+        document.getElementById('user-avatar').src = currentUser.picture || '';
+        document.getElementById('user-name').textContent = currentUser.name || currentUser.email.split('@')[0];
+      }
+    }
+
+    function showLoginRequired() {
+      document.getElementById('page-subtitle').textContent = '';
+      document.getElementById('movies').innerHTML = '';
+      const empty = document.getElementById('empty-state');
+      empty.style.display = 'block';
+      document.getElementById('empty-title').textContent = currentLang === 'ja' ? 'ログインが必要です' : 'Login required';
+      document.getElementById('empty-desc').textContent = currentLang === 'ja' ? '視聴済み映画を見るにはログインしてください' : 'Please login to see your watched movies';
+    }
+
+    async function loadWatchedMovies() {
+      try {
+        const res = await fetch('/api/watched', {
+          headers: await getAuthHeaders()
+        });
+        const data = await res.json();
+
+        if (!data.watchedMovies || data.watchedMovies.length === 0) {
+          document.getElementById('page-subtitle').textContent = '';
+          document.getElementById('movies').innerHTML = '';
+          document.getElementById('empty-state').style.display = 'block';
+          return;
+        }
+
+        document.getElementById('page-subtitle').textContent =
+          currentLang === 'ja' ? 'あなたが評価した映画 (' + data.watchedMovies.length + '本)' : 'Movies you rated (' + data.watchedMovies.length + ')';
+
+        renderMovies(data.watchedMovies);
+      } catch (e) {
+        console.error('Failed to load watched movies:', e);
+      }
+    }
+
+    function getTitle(movie) {
+      if (currentLang === 'ja') {
+        return movie.title_ja || movie.title;
+      }
+      return movie.title || movie.title_ja;
+    }
+
+    function getPoster(movie) {
+      if (currentLang === 'en' && movie.poster_path_en) {
+        return TMDB_IMAGE_BASE + movie.poster_path_en;
+      }
+      if (movie.poster_path) {
+        return TMDB_IMAGE_BASE + movie.poster_path;
+      }
+      return 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 200 300%27%3E%3Crect fill=%27%23222%27 width=%27200%27 height=%27300%27/%3E%3Ctext x=%27100%27 y=%27150%27 text-anchor=%27middle%27 fill=%27%23555%27 font-size=%2740%27%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E';
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function renderMovies(movies) {
+      const grid = document.getElementById('movies');
+      grid.innerHTML = movies.map(m => {
+        const poster = getPoster(m);
+        const title = getTitle(m);
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+          starsHtml += '<span style="color:' + (i <= m.rating ? '#ffc107' : '#444') + '">&#9733;</span>';
+        }
+        return '<div class="movie-card" onclick="openMovie(' + m.movie_id + ')"><img class="movie-poster" src="' + poster + '" alt="' + escapeHtml(title) + '" loading="lazy"><div class="movie-info"><div class="movie-title">' + escapeHtml(title) + '</div><div class="movie-meta"><span class="movie-rating">' + starsHtml + '</span></div></div></div>';
+      }).join('');
+    }
+
+    function openMovie(id) {
+      sessionStorage.setItem('ottflix-open-movie', id);
+      window.location.href = '/';
+    }
+
+    // Update text based on language
+    if (currentLang === 'en') {
+      document.getElementById('page-title').textContent = 'Watched Movies';
+      document.querySelector('.back-link').innerHTML = '&larr; Back to Home';
+    }
+
+    initClerk();
+  </script>
+</body>
+</html>

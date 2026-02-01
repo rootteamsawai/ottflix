@@ -129,8 +129,15 @@ function getGenreMatchKeywords(genre: string): string[] {
   return mapping[genre] || [];
 }
 
+interface DismissedMovieInfo {
+  title: string;
+  genres: string | null;
+}
+
 export async function generateChatResponse(
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  excludeMovieIds: number[] = [],
+  dismissedMovieInfo: DismissedMovieInfo[] = []
 ): Promise<ChatResponse> {
   // Get the latest user message for context-aware search
   const lastUserMsg = messages.filter(m => m.role === "user").pop()?.content || "";
@@ -147,10 +154,43 @@ export async function generateChatResponse(
   }
 
   // Search for candidate movies using vector search
-  let candidates = await searchMoviesByText(searchQuery, 80); // より多く取得してフィルタ
+  let candidates = await searchMoviesByText(searchQuery, 100); // より多く取得してフィルタ
 
   // 低評価の映画を除外（6.5以上のみ）
   candidates = candidates.filter(m => (m.vote_average ?? 0) >= 6.5);
+
+  // 視聴済み映画を候補から除外
+  if (excludeMovieIds.length > 0) {
+    candidates = candidates.filter(m => !excludeMovieIds.includes(m.id));
+  }
+
+  // 名作・クラシック映画も追加（評価7.5以上の映画をジャンルから追加）
+  if (detectedGenre) {
+    const genreMatchKeywords = getGenreMatchKeywords(detectedGenre);
+    const classicMovies = sqliteDb.prepare(`
+      SELECT id, title, title_ja, overview_ja, genres, poster_path, vote_average, release_date
+      FROM movies
+      WHERE vote_average >= 7.5
+      ORDER BY vote_average DESC, popularity DESC
+      LIMIT 50
+    `).all() as MovieCandidate[];
+
+    // ジャンルにマッチする名作を追加
+    const matchingClassics = classicMovies.filter(m => {
+      const genres = (m.genres || "").toLowerCase();
+      return genreMatchKeywords.some(kw => genres.includes(kw));
+    });
+
+    // 既存の候補にない映画を追加（視聴済みは除外）
+    const existingIds = new Set(candidates.map(c => c.id));
+    const excludeSet = new Set(excludeMovieIds);
+    for (const classic of matchingClassics) {
+      if (!existingIds.has(classic.id) && !excludeSet.has(classic.id)) {
+        candidates.push(classic);
+        existingIds.add(classic.id);
+      }
+    }
+  }
 
   // ジャンルが検出された場合、マッチする映画を優先
   if (detectedGenre) {
@@ -190,6 +230,45 @@ export async function generateChatResponse(
     .map(m => `${m.role === "user" ? "ユーザー" : "AI"}: ${m.content}`)
     .join("\n");
 
+  // 既に推薦した映画を抽出
+  const alreadyRecommended: string[] = [];
+  for (const msg of messages) {
+    if (msg.role === "assistant") {
+      const matches = [...msg.content.matchAll(/【(.+?)】/g)];
+      for (const match of matches) {
+        if (match[1]) {
+          alreadyRecommended.push(match[1]);
+        }
+      }
+    }
+  }
+  const alreadyRecommendedText = alreadyRecommended.length > 0
+    ? `\n\n【既に推薦済みの映画 - 絶対に再度推薦しないこと】\n${alreadyRecommended.join("、")}`
+    : "";
+
+  // ユーザーが興味なしとした映画の情報を整理
+  let dismissedMoviesText = "";
+  if (dismissedMovieInfo.length > 0) {
+    // ジャンルを集計して、ユーザーが好まないジャンルを把握
+    const dislikedGenres = new Set<string>();
+    const dismissedTitles: string[] = [];
+    for (const movie of dismissedMovieInfo) {
+      dismissedTitles.push(movie.title);
+      if (movie.genres) {
+        try {
+          const genres = JSON.parse(movie.genres) as string[];
+          genres.forEach(g => dislikedGenres.add(g));
+        } catch {}
+      }
+    }
+    dismissedMoviesText = `\n\n【ユーザーが興味なしとした映画 - 絶対に推薦しないこと】
+${dismissedTitles.slice(0, 10).join("、")}${dismissedTitles.length > 10 ? ` 他${dismissedTitles.length - 10}作品` : ""}
+
+【ユーザーが避けている可能性のあるジャンル（参考情報）】
+${[...dislikedGenres].slice(0, 5).join("、")}
+※ただし、ユーザーが明示的にこれらのジャンルを求めた場合は推薦可`;
+  }
+
   const systemPrompt = `あなたは映画ソムリエです。ユーザーとの会話から好みを理解し、最適な映画を推薦します。
 
 【あなたの役割】
@@ -201,7 +280,7 @@ export async function generateChatResponse(
 ${historyText}
 
 【候補映画リスト】
-${candidateText}
+${candidateText}${alreadyRecommendedText}${dismissedMoviesText}
 
 【最重要ルール - ジャンルの厳守】
 ユーザーが特定のジャンルを指定した場合（例：サスペンス、ホラー、アクション、コメディなど）、
@@ -215,20 +294,28 @@ ${candidateText}
 ユーザーのリクエストに合わないジャンルの映画は絶対に推薦しないでください。
 例：サスペンスを求めているユーザーにドラマやヒューマンドラマを推薦してはいけません。
 
-【その他のルール】
-1. 質問は具体的に（例：「宇宙が舞台の映画は好きですか？」「アクションシーンは多めがいいですか？」）
-2. ユーザーの回答（はい/いいえ）に基づいて候補を絞る
-   - 「はい」→ その条件に合う映画を優先
-   - 「いいえ」→ その条件の映画は除外して考える
-3. 3回程度の質問で推薦に到達する
-4. 推薦時は映画タイトルを【】で囲む（例: 【インターステラー】）
-5. 推薦理由も簡潔に説明する（なぜその映画がユーザーに合うか）
-6. 日本語でフレンドリーに会話する
+【会話の進め方】
+1. ユーザーの好みを深く理解するために2-3回質問する
+   - 好きなジャンルや雰囲気
+   - 古い名作 vs 新しい映画の好み
+   - 邦画 vs 洋画の好み
+   - 好きな映画や印象に残った作品
+2. 十分に好みを把握したら、3-5作品を推薦する
+3. 推薦後、ユーザーが「他にも」「もっと」と言ったら、別の作品を推薦する
 
-【質問のコツ】
-- 候補映画の特徴（年代、ジャンル、雰囲気）を見て質問を作る
-- ユーザーが既に答えた内容を繰り返さない
-- 抽象的すぎる質問は避ける`;
+【重要】必ず最後は映画を推薦して会話を締めくくること
+
+【推薦時のルール】
+- 推薦時は映画タイトルを【】で囲む
+- 推薦理由も簡潔に説明する
+- 同じ映画を繰り返し推薦しない
+- 日本語でフレンドリーに会話する
+
+【推薦の多様性】
+- 古典的な名作（1980年代以前）も積極的に含める
+- 新しい話題作も含める
+- 異なる国の映画を混ぜる
+- 異なるサブジャンルを含める`;
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
@@ -246,6 +333,7 @@ ${candidateText}
   const titleMatches = [...assistantMessage.matchAll(/【(.+?)】/g)];
   const recommendations: MovieRecommendation[] = [];
   const seenIds = new Set<number>();
+  const excludeSet = new Set(excludeMovieIds);
 
   for (const match of titleMatches) {
     const recTitle = match[1];
@@ -265,7 +353,8 @@ ${candidateText}
       `).get(recTitle, recTitle) as MovieCandidate | undefined;
     }
 
-    if (recMovie && !seenIds.has(recMovie.id)) {
+    // 視聴済み映画は除外
+    if (recMovie && !seenIds.has(recMovie.id) && !excludeSet.has(recMovie.id)) {
       seenIds.add(recMovie.id);
       recommendations.push({
         id: recMovie.id,

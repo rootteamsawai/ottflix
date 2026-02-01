@@ -116,7 +116,10 @@
       width: 100%;
       max-height: 90vh;
       overflow-y: auto;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE/Edge */
     }
+    .modal::-webkit-scrollbar { display: none; } /* Chrome/Safari */
     .modal-header { position: relative; height: 300px; background: #333; }
     .modal-backdrop { width: 100%; height: 100%; object-fit: cover; opacity: 0.5; }
     .modal-close {
@@ -1971,18 +1974,21 @@
 
     // Open modal for now playing movies (by TMDB ID)
     async function openNowPlayingModal(tmdbId) {
-      // First check if movie exists in our database
-      const localMovie = await fetch('/api/movies?search=' + tmdbId).then(r => r.json());
+      try {
+        // Find movie by TMDB ID in our database
+        const res = await fetch('/api/movies/by-tmdb/' + tmdbId);
+        const data = await res.json();
 
-      // Search in local database by tmdb_id
-      for (const movie of localMovie.movies || []) {
-        if (movie.tmdb_id === tmdbId) {
-          openModal(movie.id);
+        if (data.found && data.movie) {
+          // Movie is in our database - open the default detailed modal
+          openModal(data.movie.id);
           return;
         }
+      } catch (e) {
+        console.error('Failed to find movie by tmdb_id:', e);
       }
 
-      // Movie not in local database - show basic info from TMDB
+      // Movie not in local database - show alert
       alert(currentLang === 'ja'
         ? 'この映画はまだデータベースに登録されていません。近日追加予定です。'
         : 'This movie is not yet in our database. Coming soon.');

@@ -553,6 +553,22 @@ app.get("/api/movies/:id/full", async (c) => {
   });
 });
 
+// API: Find movie by TMDB ID
+app.get("/api/movies/by-tmdb/:tmdbId", (c) => {
+  const tmdbId = parseInt(c.req.param("tmdbId"));
+
+  const movie = sqliteDb.prepare(`
+    SELECT id, tmdb_id, title, title_ja, poster_path, poster_path_en, vote_average
+    FROM movies WHERE tmdb_id = ?
+  `).get(tmdbId) as { id: number } | undefined;
+
+  if (!movie) {
+    return c.json({ error: "Movie not found", found: false }, 404);
+  }
+
+  return c.json({ movie, found: true });
+});
+
 // API: Get single movie with watch providers (must be after more specific :id/* routes)
 app.get("/api/movies/:id", (c) => {
   const id = c.req.param("id");
@@ -781,7 +797,18 @@ app.get("/api/user/recommendations", async (c) => {
     .all(user.id)
     .map((r: any) => r.movie_id);
 
-  // 4. Find similar movies using preference embedding (fetch extra to filter)
+  // 4. Get dismissed movie IDs to exclude
+  const dismissedIds = sqliteDb
+    .prepare(
+      `SELECT movie_id FROM user_dismissed_movies WHERE user_id = ?`
+    )
+    .all(user.id)
+    .map((r: any) => r.movie_id);
+
+  // Combine watched and dismissed IDs
+  const excludeIds = [...new Set([...watchedIds, ...dismissedIds])];
+
+  // 5. Find similar movies using preference embedding (fetch extra to filter)
   const candidates = sqliteDb
     .prepare(
       `SELECT m.id, m.tmdb_id, m.title, m.title_ja, m.poster_path, m.poster_path_en,
@@ -791,11 +818,11 @@ app.get("/api/user/recommendations", async (c) => {
        WHERE e.embedding MATCH ? AND k = ?
        ORDER BY e.distance`
     )
-    .all(user.preference_embedding, limit + watchedIds.length + 20) as any[];
+    .all(user.preference_embedding, limit + excludeIds.length + 20) as any[];
 
-  // 5. Filter out watched movies and calculate affinity
+  // 6. Filter out watched and dismissed movies and calculate affinity
   const recommendations = candidates
-    .filter((m) => !watchedIds.includes(m.id))
+    .filter((m) => !excludeIds.includes(m.id))
     .slice(0, limit)
     .map((m) => ({
       ...m,
@@ -822,6 +849,7 @@ app.post("/api/chat", async (c) => {
 
     // ユーザー認証（オプショナル - 認証なしでも動作）
     let excludeMovieIds: number[] = [];
+    let dismissedMovieInfo: { title: string; genres: string | null }[] = [];
     const user = await getUserFromToken(c.req.header("Authorization"));
 
     if (user) {
@@ -829,13 +857,29 @@ app.post("/api/chat", async (c) => {
       const watched = sqliteDb.prepare(
         `SELECT movie_id FROM user_watched_movies WHERE user_id = ?`
       ).all(user.id) as { movie_id: number }[];
-      excludeMovieIds = watched.map(w => w.movie_id);
-      console.log(`Chat: User ${user.id} authenticated, excluding ${excludeMovieIds.length} watched movies`);
+      const watchedIds = watched.map(w => w.movie_id);
+
+      // 拒否された映画IDとその情報を取得
+      const dismissed = sqliteDb.prepare(
+        `SELECT d.movie_id, m.title, m.title_ja, m.genres
+         FROM user_dismissed_movies d
+         JOIN movies m ON m.id = d.movie_id
+         WHERE d.user_id = ?`
+      ).all(user.id) as { movie_id: number; title: string; title_ja: string | null; genres: string | null }[];
+      const dismissedIds = dismissed.map(d => d.movie_id);
+      dismissedMovieInfo = dismissed.map(d => ({
+        title: d.title_ja || d.title,
+        genres: d.genres,
+      }));
+
+      // 両方を除外リストに追加
+      excludeMovieIds = [...new Set([...watchedIds, ...dismissedIds])];
+      console.log(`Chat: User ${user.id} authenticated, excluding ${watchedIds.length} watched and ${dismissedIds.length} dismissed movies`);
     } else {
       console.log("Chat: No authenticated user, showing all movies");
     }
 
-    const response = await generateChatResponse(messages, excludeMovieIds);
+    const response = await generateChatResponse(messages, excludeMovieIds, dismissedMovieInfo);
     return c.json(response);
   } catch (error) {
     console.error("Chat error:", error);
@@ -1137,6 +1181,100 @@ app.delete("/api/watched/:movieId", async (c) => {
   } catch (error) {
     console.error("Delete watched error:", error);
     return c.json({ error: "Failed to remove watched movie" }, 500);
+  }
+});
+
+// ============================================
+// Dismissed Movies API Endpoints (Movies user doesn't want to see)
+// ============================================
+
+// POST /api/dismissed - Dismiss a movie (mark as not interested)
+app.post("/api/dismissed", async (c) => {
+  const user = await getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  try {
+    const { movieId, reason } = await c.req.json<{ movieId: number; reason?: string }>();
+
+    if (!movieId) {
+      return c.json({ error: "movieId is required" }, 400);
+    }
+
+    // Check if movie exists
+    const movie = sqliteDb.prepare(`SELECT id FROM movies WHERE id = ?`).get(movieId);
+    if (!movie) {
+      return c.json({ error: "Movie not found" }, 404);
+    }
+
+    // Insert dismissed record (ignore if already exists)
+    sqliteDb.prepare(`
+      INSERT OR IGNORE INTO user_dismissed_movies (user_id, movie_id, reason, dismissed_at)
+      VALUES (?, ?, ?, datetime('now'))
+    `).run(user.id, movieId, reason || null);
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Dismiss movie error:", error);
+    return c.json({ error: "Failed to dismiss movie" }, 500);
+  }
+});
+
+// GET /api/dismissed - Get user's dismissed movies
+app.get("/api/dismissed", async (c) => {
+  const user = await getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  try {
+    const dismissedMovies = sqliteDb.prepare(`
+      SELECT
+        d.id,
+        d.movie_id,
+        d.reason,
+        d.dismissed_at,
+        m.title,
+        m.title_ja,
+        m.poster_path,
+        m.poster_path_en,
+        m.genres
+      FROM user_dismissed_movies d
+      JOIN movies m ON m.id = d.movie_id
+      WHERE d.user_id = ?
+      ORDER BY d.dismissed_at DESC
+    `).all(user.id);
+
+    return c.json({ dismissedMovies });
+  } catch (error) {
+    console.error("Get dismissed error:", error);
+    return c.json({ error: "Failed to get dismissed movies" }, 500);
+  }
+});
+
+// DELETE /api/dismissed/:movieId - Remove from dismissed list
+app.delete("/api/dismissed/:movieId", async (c) => {
+  const user = await getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  const movieId = parseInt(c.req.param("movieId"));
+
+  try {
+    sqliteDb.prepare(`
+      DELETE FROM user_dismissed_movies
+      WHERE user_id = ? AND movie_id = ?
+    `).run(user.id, movieId);
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Delete dismissed error:", error);
+    return c.json({ error: "Failed to remove dismissed movie" }, 500);
   }
 });
 

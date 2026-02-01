@@ -1,29 +1,28 @@
-import { createClient, SupabaseClient, User as SupabaseUser } from "@supabase/supabase-js";
+import { createClerkClient, verifyToken } from "@clerk/backend";
 import "dotenv/config";
 import { sqliteDb } from "../db/index.js";
+import { appendFileSync } from "fs";
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || "";
+const CLERK_PUBLISHABLE_KEY = process.env.CLERK_PUBLISHABLE_KEY || "";
 
-// Server-side Supabase client (lazy initialization)
-let supabase: SupabaseClient | null = null;
+// Clerk client (lazy initialization)
+let clerkClient: ReturnType<typeof createClerkClient> | null = null;
 
-function getSupabaseClient(): SupabaseClient | null {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY ||
-      SUPABASE_URL === "your_supabase_project_url" ||
-      !SUPABASE_URL.startsWith("http")) {
+function getClerkClient() {
+  if (!CLERK_SECRET_KEY || CLERK_SECRET_KEY === "your_clerk_secret_key") {
     return null;
   }
 
-  if (!supabase) {
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!clerkClient) {
+    clerkClient = createClerkClient({ secretKey: CLERK_SECRET_KEY });
   }
-  return supabase;
+  return clerkClient;
 }
 
 export interface User {
   id: number;
-  supabase_id: string;
+  clerk_id: string;
   email: string;
   name: string | null;
   picture: string | null;
@@ -33,58 +32,80 @@ export interface User {
   updated_at: string;
 }
 
-export interface AuthResult {
-  user: User;
-  isNewUser: boolean;
-}
-
 /**
- * Verify Supabase access token and get/create local user
+ * Verify Clerk session token and get/create local user
  */
-export async function verifyAndGetUser(accessToken: string): Promise<User | null> {
-  const client = getSupabaseClient();
-  if (!client) {
-    console.warn("Supabase not configured, auth disabled");
+export async function verifyAndGetUser(sessionToken: string): Promise<User | null> {
+  const clerk = getClerkClient();
+  if (!clerk) {
+    console.warn("Clerk not configured, auth disabled");
+    return null;
+  }
+
+  if (!CLERK_SECRET_KEY) {
+    console.warn("CLERK_SECRET_KEY not set");
     return null;
   }
 
   try {
-    // Verify token with Supabase
-    const { data: { user: supabaseUser }, error } = await client.auth.getUser(accessToken);
+    appendFileSync("/tmp/auth-debug.log", `[${new Date().toISOString()}] Verifying token, secretKey: ${CLERK_SECRET_KEY.substring(0, 20)}...\n`);
 
-    if (error || !supabaseUser) {
-      console.error("Supabase auth error:", error);
+    // Verify the session token using standalone verifyToken function
+    const verifiedToken = await verifyToken(sessionToken, {
+      secretKey: CLERK_SECRET_KEY,
+    });
+
+    appendFileSync("/tmp/auth-debug.log", `[${new Date().toISOString()}] Token verified, sub: ${verifiedToken.sub}\n`);
+    const clerkUserId = verifiedToken.sub;
+
+    if (!clerkUserId) {
       return null;
     }
 
+    // Get user details from Clerk
+    const clerkUser = await clerk.users.getUser(clerkUserId);
+
     // Get or create local user
-    return getOrCreateUser(supabaseUser);
-  } catch (error) {
+    return getOrCreateUser(
+      clerkUserId,
+      clerkUser.emailAddresses[0]?.emailAddress || "",
+      clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ""}`.trim() : null,
+      clerkUser.imageUrl || null
+    );
+  } catch (error: any) {
+    appendFileSync("/tmp/auth-debug.log", `[${new Date().toISOString()}] Token verification failed: ${error.message}\n${error.stack}\n`);
     console.error("Token verification failed:", error);
     return null;
   }
 }
 
 /**
- * Get or create local user from Supabase user
+ * Get or create local user from Clerk user data
  */
-export function getOrCreateUser(supabaseUser: SupabaseUser): User {
-  const supabaseId = supabaseUser.id;
-  const email = supabaseUser.email || "";
-  const name = supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || null;
-  const picture = supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || null;
-
-  // Check if user exists
+function getOrCreateUser(
+  clerkId: string,
+  email: string,
+  name: string | null,
+  picture: string | null
+): User {
+  // Check if user exists (try clerk_id first, fall back to supabase_id for migration)
   let user = sqliteDb.prepare(`
-    SELECT * FROM users WHERE supabase_id = ?
-  `).get(supabaseId) as User | undefined;
+    SELECT * FROM users WHERE clerk_id = ?
+  `).get(clerkId) as User | undefined;
 
   if (!user) {
-    // Create new user
+    // Try supabase_id for backwards compatibility
+    user = sqliteDb.prepare(`
+      SELECT * FROM users WHERE supabase_id = ?
+    `).get(clerkId) as User | undefined;
+  }
+
+  if (!user) {
+    // Create new user (use clerkId for both clerk_id and supabase_id for backwards compatibility)
     const result = sqliteDb.prepare(`
-      INSERT INTO users (supabase_id, email, name, picture)
-      VALUES (?, ?, ?, ?)
-    `).run(supabaseId, email, name, picture);
+      INSERT INTO users (clerk_id, supabase_id, email, name, picture)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(clerkId, clerkId, email, name, picture);
 
     user = sqliteDb.prepare(`
       SELECT * FROM users WHERE id = ?
@@ -92,9 +113,9 @@ export function getOrCreateUser(supabaseUser: SupabaseUser): User {
   } else {
     // Update existing user's info
     sqliteDb.prepare(`
-      UPDATE users SET name = ?, picture = ?, email = ?, updated_at = datetime('now')
+      UPDATE users SET name = ?, picture = ?, email = ?, clerk_id = ?, updated_at = datetime('now')
       WHERE id = ?
-    `).run(name, picture, email, user.id);
+    `).run(name, picture, email, clerkId, user.id);
 
     user = sqliteDb.prepare(`
       SELECT * FROM users WHERE id = ?
@@ -108,14 +129,6 @@ export function getUserById(userId: number): User | null {
   const user = sqliteDb.prepare(`
     SELECT * FROM users WHERE id = ?
   `).get(userId) as User | undefined;
-
-  return user || null;
-}
-
-export function getUserBySupabaseId(supabaseId: string): User | null {
-  const user = sqliteDb.prepare(`
-    SELECT * FROM users WHERE supabase_id = ?
-  `).get(supabaseId) as User | undefined;
 
   return user || null;
 }

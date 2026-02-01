@@ -19,7 +19,7 @@ async function fetchMovies() {
   console.log("Starting movie fetch from TMDb...");
 
   const movies: MovieData[] = [];
-  const targetCount = 1000;
+  const targetCount = 5000;
   const moviesPerPage = 20;
   const totalPages = Math.ceil(targetCount / moviesPerPage);
 

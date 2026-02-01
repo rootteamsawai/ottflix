@@ -12,11 +12,13 @@
     "generate:embeddings": "tsx src/scripts/generate-embeddings.ts",
     "fetch:providers": "tsx src/scripts/fetch-providers.ts",
     "fetch:extended": "tsx src/scripts/fetch-extended-data.ts",
-    "fetch:posters": "tsx src/scripts/fetch-english-posters.ts"
+    "fetch:posters": "tsx src/scripts/fetch-english-posters.ts",
+    "fetch:videos": "tsx src/scripts/fetch-videos-only.ts",
+    "regenerate:embeddings": "tsx src/scripts/regenerate-embeddings.ts"
   },
   "dependencies": {
+    "@clerk/backend": "^2.29.7",
     "@hono/node-server": "^1.13.7",
-    "@supabase/supabase-js": "^2.93.3",
     "better-sqlite3": "^11.7.0",
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.38.3",

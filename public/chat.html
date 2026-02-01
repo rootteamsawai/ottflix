@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AI映画診断 - OTTflix</title>
+  <title>AI映画診断 - owlnight</title>
+  <script
+    async
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_cHJpbWUtaGFyZS02MC5jbGVyay5hY2NvdW50cy5kZXYk"
+    src="https://prime-hare-60.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+    type="text/javascript"
+  ></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -399,6 +406,75 @@
     let chatMessages = [];
     let isSending = false;
 
+    // ============================================
+    // Clerk Authentication
+    // ============================================
+    let clerkInstance = null;
+    let authToken = null;
+
+    function waitForClerk() {
+      return new Promise((resolve) => {
+        if (window.Clerk) {
+          resolve(window.Clerk);
+        } else {
+          const check = setInterval(() => {
+            if (window.Clerk) {
+              clearInterval(check);
+              resolve(window.Clerk);
+            }
+          }, 100);
+          setTimeout(() => {
+            clearInterval(check);
+            resolve(null);
+          }, 10000);
+        }
+      });
+    }
+
+    async function initClerk() {
+      try {
+        const clerk = await waitForClerk();
+        if (!clerk) {
+          console.warn('Clerk failed to load');
+          return;
+        }
+
+        await clerk.load();
+        clerkInstance = clerk;
+
+        if (clerkInstance.session) {
+          authToken = await clerkInstance.session.getToken();
+          console.log('Clerk: Logged in, token obtained');
+        } else {
+          console.log('Clerk: No active session');
+        }
+
+        clerkInstance.addListener(async () => {
+          if (clerkInstance.session) {
+            authToken = await clerkInstance.session.getToken();
+            console.log('Clerk: Session updated, token refreshed');
+          } else {
+            authToken = null;
+            console.log('Clerk: Session ended');
+          }
+        });
+      } catch (e) {
+        console.error('Failed to init Clerk:', e);
+      }
+    }
+
+    async function getAuthHeaders() {
+      if (clerkInstance && clerkInstance.session) {
+        try {
+          authToken = await clerkInstance.session.getToken();
+        } catch (e) {
+          console.error('Failed to get token:', e);
+          authToken = null;
+        }
+      }
+      return authToken ? { 'Authorization': 'Bearer ' + authToken } : {};
+    }
+
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
@@ -442,7 +518,7 @@
           movies.forEach(movie => {
             const poster = movie.poster_path
               ? TMDB_IMAGE_BASE + movie.poster_path
-              : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="%23222" width="200" height="300"/><text x="100" y="150" text-anchor="middle" fill="%23444" font-size="14">No Image</text></svg>';
+              : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 200 300%27%3E%3Crect fill=%27%23222%27 width=%27200%27 height=%27300%27/%3E%3Ctext x=%27100%27 y=%27150%27 text-anchor=%27middle%27 fill=%27%23555%27 font-size=%2740%27%3E%F0%9F%8E%AC%3C/text%3E%3Ctext x=%27100%27 y=%27180%27 text-anchor=%27middle%27 fill=%27%23666%27 font-size=%2712%27%3ENo Image%3C/text%3E%3C/svg%3E';
             const title = getTitle(movie);
             const year = movie.release_date ? movie.release_date.split('-')[0] : '';
             html += `
@@ -488,9 +564,11 @@
       addMessage('typing');
 
       try {
+        const authHeaders = await getAuthHeaders();
+        console.log('Sending chat with auth:', Object.keys(authHeaders).length > 0 ? 'authenticated' : 'anonymous');
         const response = await fetch('/api/chat', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify({ messages: chatMessages })
         });
 
@@ -574,7 +652,9 @@
     });
 
     // Initialize
-    initChat();
+    initClerk().then(() => {
+      initChat();
+    });
   </script>
 </body>
 </html>

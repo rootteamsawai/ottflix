@@ -7,8 +7,11 @@ interface Movie {
   title: string;
 }
 
+const REGIONS = ["JP", "US"];
+
 async function fetchProviders() {
   console.log("Starting watch providers fetch from TMDb...");
+  console.log(`Fetching from regions: ${REGIONS.join(", ")}`);
 
   // Get all movies from the database
   const movies = sqliteDb
@@ -17,10 +20,10 @@ async function fetchProviders() {
 
   console.log(`Found ${movies.length} movies in database`);
 
-  // Prepare insert statement
+  // Prepare insert statement with region
   const insertStmt = sqliteDb.prepare(`
-    INSERT OR IGNORE INTO watch_providers (movie_id, provider_name, provider_type, logo_path)
-    VALUES (?, ?, ?, ?)
+    INSERT OR IGNORE INTO watch_providers (movie_id, provider_name, provider_type, logo_path, region)
+    VALUES (?, ?, ?, ?, ?)
   `);
 
   let processed = 0;
@@ -28,67 +31,77 @@ async function fetchProviders() {
   let totalProviders = 0;
 
   for (const movie of movies) {
-    try {
-      const providers = await getWatchProviders(movie.tmdb_id, "JP");
+    let movieHasProviders = false;
 
-      if (providers) {
-        // Insert flatrate (subscription) providers
-        if (providers.flatrate) {
-          for (const provider of providers.flatrate) {
-            insertStmt.run(
-              movie.id,
-              provider.provider_name,
-              "flatrate",
-              provider.logo_path
-            );
-            totalProviders++;
+    for (const region of REGIONS) {
+      try {
+        const providers = await getWatchProviders(movie.tmdb_id, region);
+
+        if (providers) {
+          // Insert flatrate (subscription) providers
+          if (providers.flatrate) {
+            for (const provider of providers.flatrate) {
+              insertStmt.run(
+                movie.id,
+                provider.provider_name,
+                "flatrate",
+                provider.logo_path,
+                region
+              );
+              totalProviders++;
+            }
+            movieHasProviders = true;
+          }
+
+          // Insert rent providers
+          if (providers.rent) {
+            for (const provider of providers.rent) {
+              insertStmt.run(
+                movie.id,
+                provider.provider_name,
+                "rent",
+                provider.logo_path,
+                region
+              );
+              totalProviders++;
+            }
+            movieHasProviders = true;
+          }
+
+          // Insert buy providers
+          if (providers.buy) {
+            for (const provider of providers.buy) {
+              insertStmt.run(
+                movie.id,
+                provider.provider_name,
+                "buy",
+                provider.logo_path,
+                region
+              );
+              totalProviders++;
+            }
+            movieHasProviders = true;
           }
         }
 
-        // Insert rent providers
-        if (providers.rent) {
-          for (const provider of providers.rent) {
-            insertStmt.run(
-              movie.id,
-              provider.provider_name,
-              "rent",
-              provider.logo_path
-            );
-            totalProviders++;
-          }
-        }
-
-        // Insert buy providers
-        if (providers.buy) {
-          for (const provider of providers.buy) {
-            insertStmt.run(
-              movie.id,
-              provider.provider_name,
-              "buy",
-              provider.logo_path
-            );
-            totalProviders++;
-          }
-        }
-
-        if (providers.flatrate || providers.rent || providers.buy) {
-          withProviders++;
-        }
+        // Rate limit: ~30 requests per second
+        await delay(35);
+      } catch (error) {
+        console.error(`Error fetching providers for movie ${movie.tmdb_id} (${region}):`, error);
+        await delay(1000);
       }
+    }
 
-      processed++;
+    if (movieHasProviders) {
+      withProviders++;
+    }
 
-      if (processed % 50 === 0) {
-        console.log(
-          `Progress: ${processed}/${movies.length} movies processed, ${withProviders} with providers`
-        );
-      }
+    processed++;
 
-      // Rate limit: ~30 requests per second
-      await delay(35);
-    } catch (error) {
-      console.error(`Error fetching providers for movie ${movie.tmdb_id}:`, error);
-      await delay(1000);
+    if (processed % 50 === 0) {
+      console.log(
+        `Progress: ${processed}/${movies.length} movies processed, ${withProviders} with providers`
+      );
     }
   }
 
