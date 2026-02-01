@@ -275,9 +275,43 @@ export async function getMovieFullDetails(
 
 export async function getMovieFullDetailsEnglish(
   movieId: number
-): Promise<{ tagline: string }> {
+): Promise<{ tagline: string; videos?: { results: Video[] }; credits?: { cast: CastMember[]; crew: CrewMember[] } }> {
   const url = new URL(`${TMDB_BASE_URL}/movie/${movieId}`);
   url.searchParams.set("language", "en-US");
+  url.searchParams.set("append_to_response", "videos,credits");
+
+  const response = await fetchWithRetry(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  return response.json();
+}
+
+// Now Playing movies response
+export interface NowPlayingResponse {
+  page: number;
+  results: TMDbMovie[];
+  total_pages: number;
+  total_results: number;
+  dates: {
+    maximum: string;
+    minimum: string;
+  };
+}
+
+// Get movies currently in theaters
+export async function getNowPlaying(
+  region: string = "JP",
+  language: string = "ja-JP",
+  page: number = 1
+): Promise<NowPlayingResponse> {
+  const url = new URL(`${TMDB_BASE_URL}/movie/now_playing`);
+  url.searchParams.set("region", region);
+  url.searchParams.set("language", language);
+  url.searchParams.set("page", page.toString());
 
   const response = await fetchWithRetry(url.toString(), {
     headers: {

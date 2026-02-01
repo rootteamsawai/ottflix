@@ -29,6 +29,7 @@ import {
   shouldUpdateEmbedding,
   type InteractionType,
 } from "./services/learning.js";
+import { getNowPlaying } from "./services/tmdb.js";
 
 const app = new Hono();
 
@@ -71,7 +72,7 @@ app.get("/api/movies", (c) => {
            release_date, runtime, popularity, vote_average, poster_path, poster_path_en
     FROM movies
     WHERE ${whereClause}
-    ORDER BY popularity DESC
+    ORDER BY popularity DESC, id ASC
     LIMIT ? OFFSET ?
   `);
 
@@ -91,12 +92,14 @@ app.get("/api/movies", (c) => {
 // API: Get watch providers for a movie
 app.get("/api/movies/:id/providers", (c) => {
   const id = c.req.param("id");
+  const lang = c.req.query("lang") || "ja";
+  const region = lang === "en" ? "US" : "JP";
 
   const providers = sqliteDb.prepare(`
     SELECT provider_name, provider_type, logo_path
     FROM watch_providers
-    WHERE movie_id = ?
-  `).all(id) as { provider_name: string; provider_type: string; logo_path: string }[];
+    WHERE movie_id = ? AND region = ?
+  `).all(id, region) as { provider_name: string; provider_type: string; logo_path: string }[];
 
   // Group providers by type
   const result = {
@@ -126,7 +129,39 @@ app.get("/api/genres", (c) => {
   return c.json([...genreSet].sort());
 });
 
-// API: Semantic search using vector similarity (with optional personalization)
+// API: Get now playing movies (currently in theaters)
+app.get("/api/movies/now-playing", async (c) => {
+  const lang = c.req.query("lang") || "ja";
+  const region = lang === "en" ? "US" : "JP";
+  const language = lang === "en" ? "en-US" : "ja-JP";
+
+  try {
+    const data = await getNowPlaying(region, language);
+
+    // Map TMDB response to match our movie format
+    const movies = data.results.map((movie) => ({
+      tmdb_id: movie.id,
+      title: movie.title,
+      title_ja: movie.title,
+      overview: movie.overview,
+      release_date: movie.release_date,
+      vote_average: movie.vote_average,
+      poster_path: movie.poster_path,
+      popularity: movie.popularity,
+    }));
+
+    return c.json({
+      movies,
+      dates: data.dates,
+      total_results: data.total_results,
+    });
+  } catch (error) {
+    console.error("Now playing error:", error);
+    return c.json({ error: "Failed to fetch now playing movies" }, 500);
+  }
+});
+
+// API: Hybrid search - combines semantic search with cast/crew search
 app.get("/api/search", async (c) => {
   const query = c.req.query("q") || "";
   const limit = parseInt(c.req.query("limit") || "20");
@@ -136,16 +171,75 @@ app.get("/api/search", async (c) => {
   }
 
   try {
-    // Generate embedding for the search query
-    const queryEmbedding = await generateEmbedding(query);
-
     // Check if user is authenticated and has preference embedding
     const user = await getUserFromToken(c.req.header("Authorization"));
+
+    // 1. Search for movies by title, cast, or crew name (flexible match - ignores middle dots)
+    // Normalize query by removing special characters
+    const normalizedQuery = query.replace(/[・\s\-\.]/g, '');
+    // Search title, cast, and crew (actors, directors, writers, etc.)
+    const castResults = sqliteDb.prepare(`
+      SELECT DISTINCT
+        m.id, m.tmdb_id, m.title, m.title_ja, m.overview, m.overview_ja, m.genres,
+        m.release_date, m.runtime, m.popularity, m.vote_average, m.poster_path, m.poster_path_en,
+        0.0 as distance
+      FROM movies m
+      WHERE REPLACE(REPLACE(REPLACE(m.title, '・', ''), ' ', ''), '-', '') LIKE ?
+         OR REPLACE(REPLACE(REPLACE(m.title_ja, '・', ''), ' ', ''), '-', '') LIKE ?
+         OR m.title LIKE ? OR m.title_ja LIKE ?
+
+      UNION
+
+      SELECT DISTINCT
+        m.id, m.tmdb_id, m.title, m.title_ja, m.overview, m.overview_ja, m.genres,
+        m.release_date, m.runtime, m.popularity, m.vote_average, m.poster_path, m.poster_path_en,
+        0.0 as distance
+      FROM movies m
+      JOIN movie_cast mc ON m.id = mc.movie_id
+      JOIN people p ON mc.person_id = p.id
+      WHERE REPLACE(REPLACE(REPLACE(p.name, '・', ''), ' ', ''), '-', '') LIKE ?
+         OR REPLACE(REPLACE(REPLACE(p.name_en, '・', ''), ' ', ''), '-', '') LIKE ?
+         OR p.name LIKE ? OR p.name_en LIKE ?
+
+      UNION
+
+      SELECT DISTINCT
+        m.id, m.tmdb_id, m.title, m.title_ja, m.overview, m.overview_ja, m.genres,
+        m.release_date, m.runtime, m.popularity, m.vote_average, m.poster_path, m.poster_path_en,
+        0.0 as distance
+      FROM movies m
+      JOIN movie_crew mcr ON m.id = mcr.movie_id
+      JOIN people p ON mcr.person_id = p.id
+      WHERE REPLACE(REPLACE(REPLACE(p.name, '・', ''), ' ', ''), '-', '') LIKE ?
+         OR REPLACE(REPLACE(REPLACE(p.name_en, '・', ''), ' ', ''), '-', '') LIKE ?
+         OR p.name LIKE ? OR p.name_en LIKE ?
+
+      UNION
+
+      SELECT DISTINCT
+        m.id, m.tmdb_id, m.title, m.title_ja, m.overview, m.overview_ja, m.genres,
+        m.release_date, m.runtime, m.popularity, m.vote_average, m.poster_path, m.poster_path_en,
+        0.0 as distance
+      FROM movies m
+      JOIN movie_details_extended mde ON m.id = mde.movie_id
+      WHERE mde.production_companies LIKE ?
+
+      ORDER BY popularity DESC
+      LIMIT ?
+    `).all(
+      `%${normalizedQuery}%`, `%${normalizedQuery}%`, `%${query}%`, `%${query}%`,
+      `%${normalizedQuery}%`, `%${normalizedQuery}%`, `%${query}%`, `%${query}%`,
+      `%${normalizedQuery}%`, `%${normalizedQuery}%`, `%${query}%`, `%${query}%`,
+      `%"name":"${query}%`,
+      limit
+    ) as any[];
+
+    // 2. Generate embedding for semantic search
+    const queryEmbedding = await generateEmbedding(query);
     let searchEmbedding: number[];
 
     if (user && user.preference_embedding) {
       // Combine query embedding with user preference embedding
-      // Query: 70%, User preference: 30%
       const QUERY_WEIGHT = 0.7;
       const USER_WEIGHT = 0.3;
 
@@ -173,8 +267,8 @@ app.get("/api/search", async (c) => {
 
     const searchBlob = serializeFloat32(searchEmbedding);
 
-    // Find similar movies using vector search
-    const results = sqliteDb.prepare(`
+    // 3. Find similar movies using vector search
+    const semanticResults = sqliteDb.prepare(`
       SELECT
         m.id, m.tmdb_id, m.title, m.title_ja, m.overview, m.overview_ja, m.genres,
         m.release_date, m.runtime, m.popularity, m.vote_average, m.poster_path, m.poster_path_en,
@@ -183,7 +277,27 @@ app.get("/api/search", async (c) => {
       JOIN movies m ON m.id = e.rowid
       WHERE e.embedding MATCH ? AND k = ?
       ORDER BY e.distance
-    `).all(searchBlob, limit);
+    `).all(searchBlob, limit) as any[];
+
+    // 4. Merge results: cast matches first, then semantic results (deduplicated)
+    const seenIds = new Set<number>();
+    const mergedResults: any[] = [];
+
+    // Add cast results first (they're more relevant for actor searches)
+    for (const movie of castResults) {
+      if (!seenIds.has(movie.id)) {
+        seenIds.add(movie.id);
+        mergedResults.push(movie);
+      }
+    }
+
+    // Add semantic results (if not already in cast results)
+    for (const movie of semanticResults) {
+      if (!seenIds.has(movie.id) && mergedResults.length < limit) {
+        seenIds.add(movie.id);
+        mergedResults.push(movie);
+      }
+    }
 
     // Track search interaction if user is authenticated
     if (user) {
@@ -191,7 +305,7 @@ app.get("/api/search", async (c) => {
     }
 
     return c.json({
-      movies: results,
+      movies: mergedResults.slice(0, limit),
       query,
       personalized: !!(user && user.preference_embedding),
     });
@@ -350,7 +464,6 @@ app.get("/api/movies/:id/extended", (c) => {
 // API: Get full movie details (all data combined)
 app.get("/api/movies/:id/full", async (c) => {
   const id = c.req.param("id");
-
   // Get basic movie info with watch providers
   const movie = sqliteDb.prepare(`SELECT * FROM movies WHERE id = ?`).get(id) as Record<string, unknown> | undefined;
   if (!movie) {
@@ -443,6 +556,9 @@ app.get("/api/movies/:id/full", async (c) => {
 // API: Get single movie with watch providers (must be after more specific :id/* routes)
 app.get("/api/movies/:id", (c) => {
   const id = c.req.param("id");
+  const lang = c.req.query("lang") || "ja";
+  const region = lang === "en" ? "US" : "JP";
+
   const stmt = sqliteDb.prepare(`
     SELECT * FROM movies WHERE id = ?
   `);
@@ -452,12 +568,12 @@ app.get("/api/movies/:id", (c) => {
     return c.json({ error: "Movie not found" }, 404);
   }
 
-  // Get watch providers for this movie
+  // Get watch providers for this movie filtered by region
   const providers = sqliteDb.prepare(`
     SELECT provider_name, provider_type, logo_path
     FROM watch_providers
-    WHERE movie_id = ?
-  `).all(id) as { provider_name: string; provider_type: string; logo_path: string }[];
+    WHERE movie_id = ? AND region = ?
+  `).all(id, region) as { provider_name: string; provider_type: string; logo_path: string }[];
 
   // Group providers by type
   const watchProviders = {
@@ -641,6 +757,57 @@ app.get("/api/recommendations/:sessionId", (c) => {
   });
 });
 
+// GET /api/user/recommendations - Get personalized recommendations for authenticated user
+app.get("/api/user/recommendations", async (c) => {
+  const limit = parseInt(c.req.query("limit") || "15");
+
+  // 1. Check authentication and get user with preference_embedding
+  const user = await getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  // 2. Return empty if no preference_embedding
+  if (!user.preference_embedding) {
+    return c.json({ recommendations: [], hasPreference: false });
+  }
+
+  // 3. Get watched movie IDs to exclude
+  const watchedIds = sqliteDb
+    .prepare(
+      `SELECT movie_id FROM user_watched_movies WHERE user_id = ?`
+    )
+    .all(user.id)
+    .map((r: any) => r.movie_id);
+
+  // 4. Find similar movies using preference embedding (fetch extra to filter)
+  const candidates = sqliteDb
+    .prepare(
+      `SELECT m.id, m.tmdb_id, m.title, m.title_ja, m.poster_path, m.poster_path_en,
+              m.vote_average, m.genres, e.distance
+       FROM movie_embeddings e
+       JOIN movies m ON m.id = e.rowid
+       WHERE e.embedding MATCH ? AND k = ?
+       ORDER BY e.distance`
+    )
+    .all(user.preference_embedding, limit + watchedIds.length + 20) as any[];
+
+  // 5. Filter out watched movies and calculate affinity
+  const recommendations = candidates
+    .filter((m) => !watchedIds.includes(m.id))
+    .slice(0, limit)
+    .map((m) => ({
+      ...m,
+      affinity: Math.round((1 - m.distance) * 100), // Affinity percentage
+    }));
+
+  return c.json({
+    recommendations,
+    hasPreference: true,
+  });
+});
+
 // ============================================
 // Chat API Endpoint (Akinator-style movie diagnosis)
 // ============================================
@@ -653,7 +820,22 @@ app.post("/api/chat", async (c) => {
       return c.json({ error: "messages is required" }, 400);
     }
 
-    const response = await generateChatResponse(messages);
+    // ユーザー認証（オプショナル - 認証なしでも動作）
+    let excludeMovieIds: number[] = [];
+    const user = await getUserFromToken(c.req.header("Authorization"));
+
+    if (user) {
+      // 視聴済み映画IDを取得
+      const watched = sqliteDb.prepare(
+        `SELECT movie_id FROM user_watched_movies WHERE user_id = ?`
+      ).all(user.id) as { movie_id: number }[];
+      excludeMovieIds = watched.map(w => w.movie_id);
+      console.log(`Chat: User ${user.id} authenticated, excluding ${excludeMovieIds.length} watched movies`);
+    } else {
+      console.log("Chat: No authenticated user, showing all movies");
+    }
+
+    const response = await generateChatResponse(messages, excludeMovieIds);
     return c.json(response);
   } catch (error) {
     console.error("Chat error:", error);
@@ -834,13 +1016,137 @@ app.post("/api/interactions/update-embedding", async (c) => {
 });
 
 // ============================================
-// Config Endpoint (for frontend Supabase init)
+// Watched Movies API Endpoints
+// ============================================
+
+// POST /api/watched - Mark a movie as watched with rating
+app.post("/api/watched", async (c) => {
+  const user = await getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  try {
+    const { movieId, rating } = await c.req.json<{ movieId: number; rating: number }>();
+
+    if (!movieId || !rating) {
+      return c.json({ error: "movieId and rating are required" }, 400);
+    }
+
+    if (rating < 1 || rating > 5) {
+      return c.json({ error: "Rating must be between 1 and 5" }, 400);
+    }
+
+    // Check if movie exists
+    const movie = sqliteDb.prepare(`SELECT id FROM movies WHERE id = ?`).get(movieId);
+    if (!movie) {
+      return c.json({ error: "Movie not found" }, 404);
+    }
+
+    // Insert or update watched record
+    sqliteDb.prepare(`
+      INSERT INTO user_watched_movies (user_id, movie_id, rating, watched_date)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(user_id, movie_id) DO UPDATE SET
+        rating = excluded.rating,
+        watched_date = datetime('now')
+    `).run(user.id, movieId, rating);
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Add watched error:", error);
+    return c.json({ error: "Failed to add watched movie" }, 500);
+  }
+});
+
+// GET /api/watched - Get user's watched movies
+app.get("/api/watched", async (c) => {
+  const user = await getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  try {
+    const watchedMovies = sqliteDb.prepare(`
+      SELECT
+        w.id,
+        w.movie_id,
+        w.rating,
+        w.watched_date,
+        m.title,
+        m.title_ja,
+        m.poster_path,
+        m.poster_path_en,
+        m.vote_average
+      FROM user_watched_movies w
+      JOIN movies m ON m.id = w.movie_id
+      WHERE w.user_id = ?
+      ORDER BY w.watched_date DESC
+    `).all(user.id);
+
+    return c.json({ watchedMovies });
+  } catch (error) {
+    console.error("Get watched error:", error);
+    return c.json({ error: "Failed to get watched movies" }, 500);
+  }
+});
+
+// GET /api/watched/:movieId - Check if a specific movie is watched
+app.get("/api/watched/:movieId", async (c) => {
+  const user = await getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  const movieId = parseInt(c.req.param("movieId"));
+
+  try {
+    const watched = sqliteDb.prepare(`
+      SELECT id, rating, watched_date
+      FROM user_watched_movies
+      WHERE user_id = ? AND movie_id = ?
+    `).get(user.id, movieId) as { id: number; rating: number; watched_date: string } | undefined;
+
+    return c.json({ watched: watched || null });
+  } catch (error) {
+    console.error("Check watched error:", error);
+    return c.json({ error: "Failed to check watched status" }, 500);
+  }
+});
+
+// DELETE /api/watched/:movieId - Remove from watched
+app.delete("/api/watched/:movieId", async (c) => {
+  const user = await getUserFromToken(c.req.header("Authorization"));
+
+  if (!user) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+
+  const movieId = parseInt(c.req.param("movieId"));
+
+  try {
+    sqliteDb.prepare(`
+      DELETE FROM user_watched_movies
+      WHERE user_id = ? AND movie_id = ?
+    `).run(user.id, movieId);
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Delete watched error:", error);
+    return c.json({ error: "Failed to remove watched movie" }, 500);
+  }
+});
+
+// ============================================
+// Config Endpoint (for frontend Clerk init)
 // ============================================
 
 app.get("/api/config", (c) => {
   return c.json({
-    supabaseUrl: process.env.SUPABASE_URL || "",
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
+    clerkPublishableKey: process.env.CLERK_PUBLISHABLE_KEY || "",
   });
 });
 

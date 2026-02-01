@@ -3,8 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>OTTflix</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <title>owlnight</title>
+  <script
+    async
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_cHJpbWUtaGFyZS02MC5jbGVyay5hY2NvdW50cy5kZXYk"
+    src="https://prime-hare-60.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+    type="text/javascript"
+  ></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -21,11 +27,14 @@
       z-index: 100;
     }
     .logo {
-      font-size: 2rem;
-      font-weight: bold;
-      color: #e50914;
       text-decoration: none;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+    .logo img {
+      height: 28px;
+      width: auto;
     }
     .logo:hover { opacity: 0.8; }
     .search-bar {
@@ -209,6 +218,113 @@
     .tmdb-similar-section { margin-bottom: 2rem; }
     .tmdb-similar-section h3 { margin-bottom: 1rem; color: #fff; }
 
+    /* Watched Button and Star Rating */
+    .watched-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .watched-btn {
+      background: #333;
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      border: 1px solid #555;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .watched-btn:hover {
+      background: #444;
+      border-color: #777;
+    }
+    .watched-btn.active {
+      background: #4CAF50;
+      border-color: #4CAF50;
+    }
+    .watched-btn.active:hover {
+      background: #45a049;
+    }
+    .star-rating {
+      display: none;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .star-rating.active {
+      display: flex;
+    }
+    .star-rating .star {
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #444;
+      transition: all 0.15s;
+      padding: 0.1rem;
+    }
+    .star-rating .star:hover,
+    .star-rating .star.hover {
+      color: #ffc107;
+      transform: scale(1.1);
+    }
+    .star-rating .star.active {
+      color: #ffc107;
+    }
+    .watched-rating-display {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      color: #ffc107;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .watched-rating-display:hover {
+      background: rgba(255, 193, 7, 0.1);
+    }
+    .remove-watched-btn {
+      background: transparent;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0.25rem;
+      transition: color 0.2s;
+    }
+    .remove-watched-btn:hover {
+      color: #e50914;
+    }
+
+    /* Watched Badge on Movie Card */
+    .movie-card {
+      position: relative;
+    }
+    .movie-card.watched .movie-poster {
+      filter: grayscale(100%);
+    }
+    .movie-card.watched:hover .movie-poster {
+      filter: grayscale(70%);
+    }
+    .movie-card-watched-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: rgba(100, 100, 100, 0.9);
+      color: #fff;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      z-index: 10;
+    }
+
     /* Genre Tags */
     .genre-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
     .genre-tag-btn { padding: 0.4rem 0.8rem; border: 1px solid #444; border-radius: 999px; background: transparent; color: #ccc; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
@@ -231,6 +347,190 @@
     .recommendations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; }
     .recommendations-grid .movie-card { background: #252535; }
     .movie-affinity { color: #FF1493; font-size: 0.7rem; font-weight: 600; display: block; margin-top: 0.25rem; }
+
+    /* User Recommendations Carousel (Profile-based) */
+    .user-recommendations-section {
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #2d1f3d 0%, #1a1a2e 50%, #16213e 100%);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 20, 147, 0.2);
+    }
+    .user-recommendations-section h2 {
+      color: #FF1493;
+      margin-bottom: 0.5rem;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .user-recommendations-subtitle {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    .user-recommendations-carousel {
+      display: flex;
+      gap: 1rem;
+      overflow-x: auto;
+      padding-bottom: 1rem;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .user-recommendations-carousel::-webkit-scrollbar { display: none; }
+    .recommendation-card {
+      flex-shrink: 0;
+      width: 150px;
+      background: #252535;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .recommendation-card:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(255, 20, 147, 0.3);
+    }
+    .recommendation-card img {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      background: #333;
+    }
+    .recommendation-card-info {
+      padding: 0.5rem;
+    }
+    .recommendation-card-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.25rem;
+    }
+    .recommendation-card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.7rem;
+    }
+    .recommendation-card-rating { color: #ffc107; }
+    .recommendation-card-affinity { color: #FF1493; font-weight: 600; }
+
+    /* Skeleton Loading for Recommendations */
+    .recommendation-skeleton {
+      flex-shrink: 0;
+      width: 150px;
+      background: #252535;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .recommendation-skeleton-poster {
+      width: 100%;
+      aspect-ratio: 2/3;
+      background: linear-gradient(90deg, #333 25%, #444 50%, #333 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    .recommendation-skeleton-info {
+      padding: 0.5rem;
+    }
+    .recommendation-skeleton-title {
+      height: 14px;
+      background: linear-gradient(90deg, #333 25%, #444 50%, #333 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+    .recommendation-skeleton-meta {
+      height: 10px;
+      width: 60%;
+      background: linear-gradient(90deg, #333 25%, #444 50%, #333 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Now Playing Section (Currently in Theaters) */
+    .now-playing-section {
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #1a2e1a 0%, #162e16 50%, #1a3e1a 100%);
+      border-radius: 12px;
+      border: 1px solid rgba(76, 175, 80, 0.2);
+    }
+    .now-playing-section h2 {
+      color: #4CAF50;
+      margin-bottom: 0.5rem;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .now-playing-subtitle {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    .now-playing-carousel {
+      display: flex;
+      gap: 1rem;
+      overflow-x: auto;
+      padding-bottom: 1rem;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .now-playing-carousel::-webkit-scrollbar { display: none; }
+    .now-playing-card {
+      flex-shrink: 0;
+      width: 150px;
+      background: #253525;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .now-playing-card:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+    }
+    .now-playing-card img {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      background: #333;
+    }
+    .now-playing-card-info {
+      padding: 0.5rem;
+    }
+    .now-playing-card-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.25rem;
+    }
+    .now-playing-card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.7rem;
+    }
+    .now-playing-card-rating { color: #ffc107; }
+    .now-playing-badge {
+      background: #4CAF50;
+      color: #fff;
+      font-size: 0.65rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-weight: 600;
+    }
 
     /* AI Diagnosis Button */
     .ai-diagnosis-btn {
@@ -477,7 +777,7 @@
     /* Mobile Responsive */
     @media (max-width: 768px) {
       header { padding: 0.75rem 1rem; }
-      .logo { font-size: 1.5rem; }
+      .logo img { height: 22px; }
       .search-bar { margin-top: 0.75rem; gap: 0.5rem; }
       .search-bar input { padding: 0.6rem 0.75rem; font-size: 0.9rem; min-width: 0; }
       .genre-tags { margin-top: 0.75rem; gap: 0.4rem; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 0.5rem; -webkit-overflow-scrolling: touch; }
@@ -545,18 +845,28 @@
 
       .ai-diagnosis-btn { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
       .lang-toggle { padding: 0.4rem 0.75rem; font-size: 0.75rem; }
+
+      .user-recommendations-section { padding: 1rem; margin-bottom: 1rem; }
+      .user-recommendations-section h2 { font-size: 1.2rem; }
+      .user-recommendations-subtitle { font-size: 0.8rem; }
+      .recommendation-card { width: 120px; }
+      .recommendation-skeleton { width: 120px; }
+      .recommendation-card-title { font-size: 0.75rem; }
+      .recommendation-card-meta { font-size: 0.65rem; }
     }
 
     @media (max-width: 400px) {
       .movie-grid { grid-template-columns: repeat(2, 1fr); }
       .recommendations-grid { grid-template-columns: repeat(2, 1fr); }
       .extended-grid { grid-template-columns: 1fr; }
+      .recommendation-card { width: 100px; }
+      .recommendation-skeleton { width: 100px; }
     }
   </style>
 </head>
 <body>
   <header>
-    <a href="/" class="logo">OTTflix</a>
+    <a href="/" class="logo"><img src="/owlnight.png" alt="owlnight"></a>
     <div class="search-bar">
       <input type="text" id="search" placeholder="どんな映画が見たいですか？ (例: 宇宙を舞台にした感動作)">
     </div>
@@ -583,6 +893,7 @@
             <span class="user-name" id="user-name"></span>
           </div>
           <div class="user-dropdown" id="user-dropdown">
+            <a href="/watched.html" class="user-dropdown-item" style="text-decoration:none">視聴済み映画</a>
             <div class="user-dropdown-item" onclick="showOnboarding()">好みを設定</div>
             <div class="user-dropdown-item" onclick="logout()">ログアウト</div>
           </div>
@@ -592,6 +903,18 @@
   </header>
 
   <main>
+    <section class="user-recommendations-section" id="user-recommendations" style="display:none">
+      <h2>✨ あなたへのおすすめ</h2>
+      <p class="user-recommendations-subtitle">あなたの好みに基づくおすすめ映画</p>
+      <div class="user-recommendations-carousel" id="user-recommendations-carousel"></div>
+    </section>
+
+    <section class="now-playing-section" id="now-playing" style="display:none">
+      <h2>🎬 公開中</h2>
+      <p class="now-playing-subtitle" id="now-playing-subtitle">現在劇場で公開中の映画</p>
+      <div class="now-playing-carousel" id="now-playing-carousel"></div>
+    </section>
+
     <section class="recommendations-section" id="recommendations" style="display:none">
       <h2>あなたへのおすすめ</h2>
       <p class="recommendations-subtitle">視聴履歴に基づく、まだ見ていない映画</p>
@@ -599,6 +922,8 @@
     </section>
     <div class="stats" id="stats"></div>
     <div class="movie-grid" id="movies"></div>
+    <div id="scroll-sentinel" style="height: 20px; margin-top: 20px;"></div>
+    <div id="loading-more" style="display: none; text-align: center; padding: 20px; color: #888;">読み込み中...</div>
   </main>
 
   <div class="modal-overlay" id="modal">
@@ -611,6 +936,24 @@
         <h1 class="modal-title" id="modal-title"></h1>
         <p class="modal-title-ja" id="modal-title-ja"></p>
         <p class="modal-tagline" id="modal-tagline"></p>
+        <!-- Watched Button and Star Rating -->
+        <div class="watched-container" id="watched-container" style="display:none">
+          <button class="watched-btn" id="watched-btn" onclick="toggleWatchedUI()">
+            <span id="watched-btn-icon">&#9744;</span>
+            <span id="watched-btn-text">見た</span>
+          </button>
+          <div class="star-rating" id="star-rating">
+            <span class="star" data-rating="1" onclick="setRating(1)" onmouseenter="hoverRating(1)" onmouseleave="resetRatingHover()">&#9733;</span>
+            <span class="star" data-rating="2" onclick="setRating(2)" onmouseenter="hoverRating(2)" onmouseleave="resetRatingHover()">&#9733;</span>
+            <span class="star" data-rating="3" onclick="setRating(3)" onmouseenter="hoverRating(3)" onmouseleave="resetRatingHover()">&#9733;</span>
+            <span class="star" data-rating="4" onclick="setRating(4)" onmouseenter="hoverRating(4)" onmouseleave="resetRatingHover()">&#9733;</span>
+            <span class="star" data-rating="5" onclick="setRating(5)" onmouseenter="hoverRating(5)" onmouseleave="resetRatingHover()">&#9733;</span>
+          </div>
+          <div class="watched-rating-display" id="watched-rating-display" style="display:none" onclick="showStarRating()">
+            <span id="current-rating-stars"></span>
+          </div>
+          <button class="remove-watched-btn" id="remove-watched-btn" style="display:none" onclick="removeWatched()" title="Remove from watched">&#10005;</button>
+        </div>
         <div class="modal-genres" id="modal-genres"></div>
         <div class="modal-meta" id="modal-meta"></div>
         <p class="modal-overview" id="modal-overview"></p>
@@ -655,9 +998,30 @@
     const TMDB_PROFILE_BASE = 'https://image.tmdb.org/t/p/w185';
     let currentSearch = '';
     let currentGenre = '';
+    let watchedMovieIds = []; // IDs of watched movies to hide from main list
 
-    // Language switching
-    let currentLang = localStorage.getItem('ottflix-lang') || 'ja';
+    // Infinite scroll state
+    let currentPage = 1;
+    let totalPages = 1;
+    let isLoadingMore = false;
+    let infiniteScrollObserver = null;
+
+    // Language switching - detect browser language on first visit
+    function detectBrowserLanguage() {
+      const stored = localStorage.getItem('ottflix-lang');
+      if (stored) return stored;
+
+      // Detect browser language
+      const browserLang = navigator.language || navigator.languages?.[0] || 'ja';
+      // If browser is English (en, en-US, en-GB, etc.), use English
+      const detectedLang = browserLang.startsWith('en') ? 'en' : 'ja';
+
+      // Store the detected language for future visits
+      localStorage.setItem('ottflix-lang', detectedLang);
+      return detectedLang;
+    }
+
+    let currentLang = detectBrowserLanguage();
 
     // Translations
     const translations = {
@@ -689,6 +1053,7 @@
         similarity: '類似度',
         loading: '読み込み中...',
         popularMovies: '人気の映画',
+        movies: '本',
         aiDiagnosis: 'AI診断',
         uploadHistory: 'Netflix履歴をアップロード',
         clearHistory: '履歴クリア',
@@ -699,7 +1064,16 @@
         recommendationsTitle: 'あなたへのおすすめ',
         recommendationsSubtitle: '視聴履歴に基づく、まだ見ていない映画',
         searchPlaceholder: 'どんな映画が見たいですか？ (例: 宇宙を舞台にした感動作)',
-        relatedTo: 'に関連する映画'
+        relatedTo: 'に関連する映画',
+        watched: '見た',
+        watchedStatus: '視聴済み',
+        removeFromWatched: '視聴済みから削除しますか？',
+        pleaseLogin: 'ログインしてください',
+        userRecommendationsTitle: '✨ あなたへのおすすめ',
+        userRecommendationsSubtitle: 'あなたの好みに基づくおすすめ映画',
+        nowPlayingTitle: '🎬 公開中',
+        nowPlayingSubtitle: '現在劇場で公開中の映画',
+        inTheaters: '公開中'
       },
       en: {
         trailers: 'Trailers',
@@ -729,6 +1103,7 @@
         similarity: 'Similarity',
         loading: 'Loading...',
         popularMovies: 'Popular Movies',
+        movies: ' movies',
         aiDiagnosis: 'AI Diagnosis',
         uploadHistory: 'Upload Netflix History',
         clearHistory: 'Clear History',
@@ -739,7 +1114,16 @@
         recommendationsTitle: 'Recommended for You',
         recommendationsSubtitle: 'Movies you haven\'t watched based on your history',
         searchPlaceholder: 'What movie do you want to watch? (e.g., emotional space adventure)',
-        relatedTo: ' related movies'
+        relatedTo: ' related movies',
+        watched: 'Watched',
+        watchedStatus: 'Watched',
+        removeFromWatched: 'Remove from watched?',
+        pleaseLogin: 'Please login first',
+        userRecommendationsTitle: '✨ Recommended for You',
+        userRecommendationsSubtitle: 'Based on your taste profile',
+        nowPlayingTitle: '🎬 Now Playing',
+        nowPlayingSubtitle: 'Movies currently in theaters',
+        inTheaters: 'In Theaters'
       }
     };
 
@@ -762,6 +1146,14 @@
       document.querySelector('.recommendations-section h2').textContent = t('recommendationsTitle');
       document.querySelector('.recommendations-subtitle').textContent = t('recommendationsSubtitle');
 
+      // Update user recommendations section text
+      document.querySelector('.user-recommendations-section h2').textContent = t('userRecommendationsTitle');
+      document.querySelector('.user-recommendations-subtitle').textContent = t('userRecommendationsSubtitle');
+
+      // Update now playing section text
+      document.querySelector('.now-playing-section h2').textContent = t('nowPlayingTitle');
+      document.querySelector('.now-playing-subtitle').textContent = t('nowPlayingSubtitle');
+
       // Re-attach file input listener
       document.getElementById('csv-upload').addEventListener('change', handleFileUpload);
     }
@@ -774,110 +1166,159 @@
       updateUIText();
       loadMovies();
       loadRecommendations();
+      loadWatchedMovies();
+      loadUserRecommendations(); // Re-render user recommendations with new language
+      loadNowPlaying(); // Re-render now playing with new language
     }
 
     // ============================================
-    // Supabase Authentication
+    // Clerk Authentication
     // ============================================
 
-    let supabaseClient = null;
+    let clerkInstance = null;
     let currentUser = null;
     let authToken = null;
 
-    // Initialize Supabase client with config from server
-    async function initSupabase() {
-      try {
-        const res = await fetch('/api/config');
-        const config = await res.json();
-        if (config.supabaseUrl && config.supabaseAnonKey) {
-          supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-
-          // Listen for auth state changes
-          supabaseClient.auth.onAuthStateChange(async (event, session) => {
-            console.log('Auth state changed:', event);
-            if (event === 'SIGNED_IN' && session) {
-              authToken = session.access_token;
-              await checkAuth();
-              loadMovies();
-            } else if (event === 'SIGNED_OUT') {
-              authToken = null;
-              currentUser = null;
-              updateAuthUI();
-              loadMovies();
-            }
-          });
-
-          // Check initial auth state
-          await checkAuth();
+    // Wait for Clerk script to load
+    function waitForClerk() {
+      return new Promise((resolve) => {
+        if (window.Clerk) {
+          resolve(window.Clerk);
         } else {
-          console.warn('Supabase not configured. Auth disabled.');
-          document.getElementById('login-btn').style.display = 'none';
+          const check = setInterval(() => {
+            if (window.Clerk) {
+              clearInterval(check);
+              resolve(window.Clerk);
+            }
+          }, 100);
+          // Timeout after 10 seconds
+          setTimeout(() => {
+            clearInterval(check);
+            resolve(null);
+          }, 10000);
         }
+      });
+    }
+
+    // Initialize Clerk client (loaded via script tag)
+    async function initClerk() {
+      try {
+        const clerk = await waitForClerk();
+        if (!clerk) {
+          console.warn('Clerk failed to load');
+          document.getElementById('login-btn').style.display = 'none';
+          return;
+        }
+
+        await clerk.load();
+        clerkInstance = clerk;
+
+        // Handle auth state
+        async function handleAuthState() {
+          if (clerkInstance.user && clerkInstance.session) {
+            authToken = await clerkInstance.session.getToken();
+            // Sync with backend - checkAuth will set currentUser if successful
+            await checkAuth();
+          } else {
+            authToken = null;
+            currentUser = null;
+            watchedMovieIds = []; // Clear to show all movies
+            updateAuthUI();
+          }
+        }
+
+        // Check if user is signed in
+        await handleAuthState();
+
+        // Listen for auth state changes
+        clerkInstance.addListener(async () => {
+          await handleAuthState();
+          loadMovies();
+        });
       } catch (e) {
-        console.error('Failed to init Supabase:', e);
+        console.error('Failed to init Clerk:', e);
+        document.getElementById('login-btn').style.display = 'none';
       }
     }
 
-    function getAuthHeaders() {
+    async function getAuthHeaders() {
+      // Always get fresh token to avoid expiration issues
+      if (clerkInstance && clerkInstance.session) {
+        try {
+          authToken = await clerkInstance.session.getToken();
+        } catch (e) {
+          console.error('Failed to get token:', e);
+          authToken = null;
+        }
+      }
       return authToken ? { 'Authorization': 'Bearer ' + authToken } : {};
     }
 
     async function loginWithGoogle() {
-      if (!supabaseClient) {
-        console.error('Supabase not initialized');
+      if (!clerkInstance) {
+        console.error('Clerk not initialized');
         return;
       }
-      const { data, error } = await supabaseClient.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      if (error) {
+      try {
+        await clerkInstance.openSignIn({
+          appearance: {
+            elements: {
+              rootBox: { width: '100%' }
+            }
+          }
+        });
+      } catch (error) {
         console.error('Login error:', error);
       }
     }
 
     async function checkAuth() {
-      if (!supabaseClient) {
+      if (!clerkInstance || !clerkInstance.user) {
+        currentUser = null;
+        authToken = null;
         updateAuthUI();
         return;
       }
 
-      // Get current session from Supabase
-      const { data: { session }, error } = await supabaseClient.auth.getSession();
-
-      if (error) {
-        console.error('Session error:', error);
-        updateAuthUI();
-        return;
+      // Get fresh token
+      if (clerkInstance.session) {
+        authToken = await clerkInstance.session.getToken();
       }
 
-      if (session) {
-        authToken = session.access_token;
-
+      if (authToken) {
         // Get user from our backend (creates local user if needed)
         try {
           const res = await fetch('/api/auth/me', {
-            headers: getAuthHeaders()
+            headers: await getAuthHeaders()
           });
 
           if (res.ok) {
             currentUser = await res.json();
             updateAuthUI();
+            await loadWatchedMovies();
+            loadMovies(); // Refresh to hide watched movies
+            loadUserRecommendations(); // Load profile-based recommendations
 
             // Show onboarding for new users
             if (!currentUser.onboarding_completed) {
               showOnboarding();
             }
           } else {
-            await logout();
+            // Backend auth failed - reset user state
+            currentUser = null;
+            authToken = null;
+            updateAuthUI();
           }
         } catch (e) {
           console.error('Auth check failed:', e);
+          currentUser = null;
+          authToken = null;
+          updateAuthUI();
         }
       } else {
+        currentUser = null;
         updateAuthUI();
+        loadWatchedMovies();
       }
     }
 
@@ -902,13 +1343,16 @@
     }
 
     async function logout() {
-      if (supabaseClient) {
-        await supabaseClient.auth.signOut();
+      if (clerkInstance) {
+        await clerkInstance.signOut();
       }
       authToken = null;
       currentUser = null;
+      watchedMovieIds = []; // Clear watched list to show all movies
       updateAuthUI();
       loadMovies();
+      // Hide user recommendations section
+      document.getElementById('user-recommendations').style.display = 'none';
     }
 
     // Close dropdown when clicking outside
@@ -936,7 +1380,7 @@
       // Load existing session
       try {
         const res = await fetch('/api/onboarding', {
-          headers: getAuthHeaders()
+          headers: await getAuthHeaders()
         });
         const data = await res.json();
         onboardingMessages = data.messages || [];
@@ -1001,7 +1445,7 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...getAuthHeaders()
+            ...await getAuthHeaders()
           },
           body: JSON.stringify({ message })
         });
@@ -1035,7 +1479,7 @@
       try {
         const res = await fetch('/api/onboarding/complete', {
           method: 'POST',
-          headers: getAuthHeaders()
+          headers: await getAuthHeaders()
         });
 
         if (res.ok) {
@@ -1043,6 +1487,7 @@
           currentUser.onboarding_completed = true;
           currentUser.has_preference = true;
           loadMovies(); // Reload with personalized results
+          loadUserRecommendations(); // Load profile-based recommendations
         }
       } catch (e) {
         console.error('Failed to complete onboarding:', e);
@@ -1050,27 +1495,267 @@
     }
 
     // Close onboarding when clicking outside
-    document.getElementById('onboarding-modal').addEventListener('click', (e) => {
+    document.getElementById('onboarding-modal').addEventListener('click', async (e) => {
       if (e.target.id === 'onboarding-modal') {
-        hideOnboarding();
+        await closeOnboardingAndMarkComplete();
       }
     });
+
+    // Close onboarding and mark as complete (so it doesn't show again)
+    async function closeOnboardingAndMarkComplete() {
+      hideOnboarding();
+
+      // Mark onboarding as completed if user has answered at least once
+      const hasUserMessages = onboardingMessages.some(m => m.role === 'user');
+      if (hasUserMessages && currentUser && !currentUser.onboarding_completed) {
+        try {
+          await fetch('/api/onboarding/complete', {
+            method: 'POST',
+            headers: await getAuthHeaders()
+          });
+          currentUser.onboarding_completed = true;
+          currentUser.has_preference = true;
+          loadMovies();
+          loadUserRecommendations(); // Load profile-based recommendations
+        } catch (e) {
+          console.error('Failed to complete onboarding:', e);
+        }
+      }
+    }
 
     // ============================================
     // Interaction Tracking
     // ============================================
 
-    function trackInteraction(type, movieId, queryText) {
+    async function trackInteraction(type, movieId, queryText) {
       if (!currentUser) return;
 
-      fetch('/api/interactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders()
-        },
-        body: JSON.stringify({ type, movieId, queryText })
-      }).catch(e => console.error('Track interaction failed:', e));
+      try {
+        const headers = await getAuthHeaders();
+        fetch('/api/interactions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...headers
+          },
+          body: JSON.stringify({ type, movieId, queryText })
+        }).catch(e => console.error('Track interaction failed:', e));
+      } catch (e) {
+        console.error('Track interaction failed:', e);
+      }
+    }
+
+    // ============================================
+    // Watched Movies Feature
+    // ============================================
+
+    let currentModalMovieId = null;
+    let currentWatchedData = null;
+    let isRatingMode = false;
+
+    function toggleWatchedUI() {
+      if (!currentUser) {
+        alert(currentLang === 'ja' ? 'ログインしてください' : 'Please login first');
+        return;
+      }
+
+      const starRating = document.getElementById('star-rating');
+      starRating.classList.add('active');
+      isRatingMode = true;
+    }
+
+    function hoverRating(rating) {
+      const stars = document.querySelectorAll('#star-rating .star');
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('hover');
+        } else {
+          star.classList.remove('hover');
+        }
+      });
+    }
+
+    function resetRatingHover() {
+      const stars = document.querySelectorAll('#star-rating .star');
+      stars.forEach(star => star.classList.remove('hover'));
+    }
+
+    async function setRating(rating) {
+      if (!currentUser || !currentModalMovieId) {
+        alert(t('pleaseLogin'));
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/watched', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...await getAuthHeaders()
+          },
+          body: JSON.stringify({ movieId: currentModalMovieId, rating })
+        });
+
+        if (res.ok) {
+          currentWatchedData = { rating };
+          updateWatchedUI();
+          await loadWatchedMovies(); // Refresh the watched list
+
+          // Add watched badge and style to the movie card
+          const card = document.querySelector('.movie-card[data-movie-id="' + currentModalMovieId + '"]');
+          if (card && !card.classList.contains('watched')) {
+            card.classList.add('watched');
+            const badge = document.createElement('span');
+            badge.className = 'movie-card-watched-badge';
+            badge.innerHTML = '✓ ' + t('watchedStatus');
+            card.insertBefore(badge, card.firstChild);
+          }
+        } else if (res.status === 401) {
+          // Auth expired or invalid - reset state
+          currentUser = null;
+          authToken = null;
+          updateAuthUI();
+          updateWatchedUI();
+          alert(t('pleaseLogin'));
+        }
+      } catch (e) {
+        console.error('Failed to save watched:', e);
+      }
+    }
+
+    function showStarRating() {
+      const starRating = document.getElementById('star-rating');
+      const ratingDisplay = document.getElementById('watched-rating-display');
+      starRating.classList.add('active');
+      ratingDisplay.style.display = 'none';
+      isRatingMode = true;
+
+      // Show current rating in stars
+      if (currentWatchedData && currentWatchedData.rating) {
+        highlightStars(currentWatchedData.rating);
+      }
+    }
+
+    function highlightStars(rating) {
+      const stars = document.querySelectorAll('#star-rating .star');
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      });
+    }
+
+    async function removeWatched() {
+      if (!currentUser || !currentModalMovieId) return;
+
+      if (!confirm(currentLang === 'ja' ? '視聴済みから削除しますか？' : 'Remove from watched?')) {
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/watched/' + currentModalMovieId, {
+          method: 'DELETE',
+          headers: await getAuthHeaders()
+        });
+
+        if (res.ok) {
+          currentWatchedData = null;
+          updateWatchedUI();
+          await loadWatchedMovies(); // Refresh the watched list
+        }
+      } catch (e) {
+        console.error('Failed to remove watched:', e);
+      }
+    }
+
+    function updateWatchedUI() {
+      const watchedBtn = document.getElementById('watched-btn');
+      const watchedBtnIcon = document.getElementById('watched-btn-icon');
+      const watchedBtnText = document.getElementById('watched-btn-text');
+      const starRating = document.getElementById('star-rating');
+      const ratingDisplay = document.getElementById('watched-rating-display');
+      const removeBtn = document.getElementById('remove-watched-btn');
+      const currentRatingStars = document.getElementById('current-rating-stars');
+
+      if (currentWatchedData && currentWatchedData.rating) {
+        // Already watched - show rating display
+        watchedBtn.classList.add('active');
+        watchedBtnIcon.innerHTML = '&#9745;';
+        watchedBtnText.textContent = currentLang === 'ja' ? '視聴済み' : 'Watched';
+        watchedBtn.style.display = 'none';
+        starRating.classList.remove('active');
+        ratingDisplay.style.display = 'flex';
+        removeBtn.style.display = 'block';
+
+        // Show stars
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+          starsHtml += '<span style="color:' + (i <= currentWatchedData.rating ? '#ffc107' : '#444') + '">&#9733;</span>';
+        }
+        currentRatingStars.innerHTML = starsHtml;
+        isRatingMode = false;
+      } else {
+        // Not watched - show button
+        watchedBtn.classList.remove('active');
+        watchedBtnIcon.innerHTML = '&#9744;';
+        watchedBtnText.textContent = currentLang === 'ja' ? '見た' : 'Watched';
+        watchedBtn.style.display = 'flex';
+        starRating.classList.remove('active');
+        ratingDisplay.style.display = 'none';
+        removeBtn.style.display = 'none';
+        highlightStars(0);
+        isRatingMode = false;
+      }
+    }
+
+    async function loadWatchedStatus(movieId) {
+      if (!currentUser) {
+        document.getElementById('watched-container').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('watched-container').style.display = 'flex';
+
+      try {
+        const res = await fetch('/api/watched/' + movieId, {
+          headers: await getAuthHeaders()
+        });
+        const data = await res.json();
+        currentWatchedData = data.watched;
+        updateWatchedUI();
+      } catch (e) {
+        console.error('Failed to load watched status:', e);
+        currentWatchedData = null;
+        updateWatchedUI();
+      }
+    }
+
+    // Load watched movie IDs (for filtering main list)
+    async function loadWatchedMovies() {
+      if (!currentUser) {
+        watchedMovieIds = [];
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/watched', {
+          headers: await getAuthHeaders()
+        });
+        const data = await res.json();
+
+        if (!data.watchedMovies || data.watchedMovies.length === 0) {
+          watchedMovieIds = [];
+          return;
+        }
+
+        // Store watched movie IDs to hide from main list
+        watchedMovieIds = data.watchedMovies.map(m => m.movie_id);
+      } catch (e) {
+        console.error('Failed to load watched movies:', e);
+        watchedMovieIds = [];
+      }
     }
 
     function getTitle(movie) {
@@ -1094,7 +1779,8 @@
       if (movie.poster_path) {
         return TMDB_IMAGE_BASE + movie.poster_path;
       }
-      return 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect fill="%23333" width="200" height="300"/></svg>';
+      // URL-encoded SVG placeholder with film icon
+      return 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 200 300%27%3E%3Crect fill=%27%23222%27 width=%27200%27 height=%27300%27/%3E%3Ctext x=%27100%27 y=%27150%27 text-anchor=%27middle%27 fill=%27%23555%27 font-size=%2740%27%3E%F0%9F%8E%AC%3C/text%3E%3Ctext x=%27100%27 y=%27180%27 text-anchor=%27middle%27 fill=%27%23666%27 font-size=%2712%27%3ENo Image%3C/text%3E%3C/svg%3E';
     }
 
     async function loadGenres() {
@@ -1160,6 +1846,148 @@
       }).join('');
     }
 
+    // User profile-based recommendations (authenticated users with preference_embedding)
+    async function loadUserRecommendations() {
+      const section = document.getElementById('user-recommendations');
+      const carousel = document.getElementById('user-recommendations-carousel');
+
+      // Don't show if not logged in
+      if (!currentUser) {
+        section.style.display = 'none';
+        return;
+      }
+
+      // Show loading skeleton while fetching
+      section.style.display = 'block';
+      carousel.innerHTML = Array(8).fill('').map(() =>
+        '<div class="recommendation-skeleton">' +
+          '<div class="recommendation-skeleton-poster"></div>' +
+          '<div class="recommendation-skeleton-info">' +
+            '<div class="recommendation-skeleton-title"></div>' +
+            '<div class="recommendation-skeleton-meta"></div>' +
+          '</div>' +
+        '</div>'
+      ).join('');
+
+      try {
+        const res = await fetch('/api/user/recommendations?limit=15', {
+          headers: await getAuthHeaders()
+        });
+
+        if (!res.ok) {
+          section.style.display = 'none';
+          return;
+        }
+
+        const data = await res.json();
+
+        // Hide if no preference embedding or no recommendations
+        if (!data.hasPreference || !data.recommendations || data.recommendations.length === 0) {
+          section.style.display = 'none';
+          return;
+        }
+
+        renderUserRecommendations(data.recommendations);
+      } catch (e) {
+        console.error('Failed to load user recommendations:', e);
+        section.style.display = 'none';
+      }
+    }
+
+    function renderUserRecommendations(movies) {
+      const carousel = document.getElementById('user-recommendations-carousel');
+      carousel.innerHTML = movies.map(m => {
+        const poster = getPoster(m);
+        const title = getTitle(m);
+        return '<div class="recommendation-card" onclick="openModal(' + m.id + ')">' +
+          '<img src="' + poster + '" alt="' + escapeHtml(title) + '" loading="lazy">' +
+          '<div class="recommendation-card-info">' +
+            '<div class="recommendation-card-title">' + escapeHtml(title) + '</div>' +
+            '<div class="recommendation-card-meta">' +
+              '<span class="recommendation-card-rating">★ ' + (m.vote_average?.toFixed(1) || '-') + '</span>' +
+              '<span class="recommendation-card-affinity">' + m.affinity + '%</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    // Now Playing movies (currently in theaters)
+    async function loadNowPlaying() {
+      const section = document.getElementById('now-playing');
+      const carousel = document.getElementById('now-playing-carousel');
+
+      // Show loading skeleton
+      section.style.display = 'block';
+      carousel.innerHTML = Array(8).fill('').map(() =>
+        '<div class="recommendation-skeleton">' +
+          '<div class="recommendation-skeleton-poster"></div>' +
+          '<div class="recommendation-skeleton-info">' +
+            '<div class="recommendation-skeleton-title"></div>' +
+            '<div class="recommendation-skeleton-meta"></div>' +
+          '</div>' +
+        '</div>'
+      ).join('');
+
+      try {
+        const res = await fetch('/api/movies/now-playing?lang=' + currentLang);
+
+        if (!res.ok) {
+          section.style.display = 'none';
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!data.movies || data.movies.length === 0) {
+          section.style.display = 'none';
+          return;
+        }
+
+        renderNowPlaying(data.movies);
+      } catch (e) {
+        console.error('Failed to load now playing movies:', e);
+        section.style.display = 'none';
+      }
+    }
+
+    function renderNowPlaying(movies) {
+      const carousel = document.getElementById('now-playing-carousel');
+      carousel.innerHTML = movies.map(m => {
+        const poster = m.poster_path ? TMDB_IMAGE_BASE + m.poster_path : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 200 300%27%3E%3Crect fill=%27%23222%27 width=%27200%27 height=%27300%27/%3E%3Ctext x=%27100%27 y=%27150%27 text-anchor=%27middle%27 fill=%27%23555%27 font-size=%2740%27%3E%F0%9F%8E%AC%3C/text%3E%3Ctext x=%27100%27 y=%27180%27 text-anchor=%27middle%27 fill=%27%23666%27 font-size=%2712%27%3ENo Image%3C/text%3E%3C/svg%3E';
+        const title = m.title;
+        return '<div class="now-playing-card" onclick="openNowPlayingModal(' + m.tmdb_id + ')">' +
+          '<img src="' + poster + '" alt="' + escapeHtml(title) + '" loading="lazy">' +
+          '<div class="now-playing-card-info">' +
+            '<div class="now-playing-card-title">' + escapeHtml(title) + '</div>' +
+            '<div class="now-playing-card-meta">' +
+              '<span class="now-playing-card-rating">★ ' + (m.vote_average?.toFixed(1) || '-') + '</span>' +
+              '<span class="now-playing-badge">' + t('inTheaters') + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    // Open modal for now playing movies (by TMDB ID)
+    async function openNowPlayingModal(tmdbId) {
+      // First check if movie exists in our database
+      const localMovie = await fetch('/api/movies?search=' + tmdbId).then(r => r.json());
+
+      // Search in local database by tmdb_id
+      for (const movie of localMovie.movies || []) {
+        if (movie.tmdb_id === tmdbId) {
+          openModal(movie.id);
+          return;
+        }
+      }
+
+      // Movie not in local database - show basic info from TMDB
+      alert(currentLang === 'ja'
+        ? 'この映画はまだデータベースに登録されていません。近日追加予定です。'
+        : 'This movie is not yet in our database. Coming soon.');
+    }
+
     async function handleFileUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -1202,39 +2030,109 @@
       const statsEl = document.getElementById('stats');
       moviesEl.innerHTML = '<div class="loading">' + t('loading') + '</div>';
 
+      // Reset pagination state
+      currentPage = 1;
+      totalPages = 1;
+
       if (currentSearch) {
-        // AI検索 (with auth for personalization)
+        // AI検索 (with auth for personalization) - no pagination for search
         const res = await fetch('/api/search?q=' + encodeURIComponent(currentSearch) + '&limit=40', {
-          headers: getAuthHeaders()
+          headers: await getAuthHeaders()
         });
         const data = await res.json();
         if (data.error) {
           moviesEl.innerHTML = '<div class="loading">' + data.error + '</div>';
           return;
         }
-        renderMovies(data.movies, true);
+        renderMovies(data.movies, true, false);
         const personalizedBadge = data.personalized ? '<span class="personalized-badge">パーソナライズ</span>' : '';
         statsEl.innerHTML = '"' + currentSearch + '"' + t('relatedTo') + ': ' + data.movies.length + personalizedBadge;
+        // No infinite scroll for search results
+        totalPages = 1;
       } else {
-        // 通常表示（ジャンルフィルター対応）
-        const params = new URLSearchParams({ limit: '40' });
+        // 通常表示（ジャンルフィルター対応）with pagination
+        const params = new URLSearchParams({ limit: '40', page: '1' });
         if (currentGenre) params.set('genre', currentGenre);
         const res = await fetch('/api/movies?' + params);
         const data = await res.json();
-        renderMovies(data.movies, false);
-        statsEl.textContent = currentGenre ? currentGenre + ': ' + data.pagination.total : t('popularMovies') + ': ' + data.pagination.total;
+        renderMovies(data.movies, false, false);
+
+        // Update pagination state
+        totalPages = data.pagination.totalPages;
+
+        const totalCount = data.pagination.total;
+        statsEl.textContent = (currentGenre ? currentGenre + ': ' : t('popularMovies') + ': ') + totalCount + (currentLang === 'ja' ? '本' : ' movies');
+      }
+
+      // Setup infinite scroll observer
+      setupInfiniteScroll();
+    }
+
+    async function loadMoreMovies() {
+      if (isLoadingMore || currentPage >= totalPages || currentSearch) return;
+
+      isLoadingMore = true;
+      document.getElementById('loading-more').style.display = 'block';
+
+      currentPage++;
+
+      try {
+        const params = new URLSearchParams({ limit: '40', page: currentPage.toString() });
+        if (currentGenre) params.set('genre', currentGenre);
+        const res = await fetch('/api/movies?' + params);
+        const data = await res.json();
+
+        renderMovies(data.movies, false, true); // append mode
+      } catch (e) {
+        console.error('Failed to load more movies:', e);
+        currentPage--; // Revert on error
+      } finally {
+        isLoadingMore = false;
+        document.getElementById('loading-more').style.display = 'none';
       }
     }
 
-    function renderMovies(movies, showSimilarity) {
+    function setupInfiniteScroll() {
+      // Disconnect existing observer if any
+      if (infiniteScrollObserver) {
+        infiniteScrollObserver.disconnect();
+      }
+
+      const sentinel = document.getElementById('scroll-sentinel');
+
+      infiniteScrollObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting && !isLoadingMore && currentPage < totalPages && !currentSearch) {
+            loadMoreMovies();
+          }
+        });
+      }, {
+        root: null,
+        rootMargin: '200px',
+        threshold: 0
+      });
+
+      infiniteScrollObserver.observe(sentinel);
+    }
+
+    function renderMovies(movies, showSimilarity, append = false) {
       const grid = document.getElementById('movies');
-      grid.innerHTML = movies.map(m => {
+      const html = movies.map(m => {
         const year = m.release_date ? m.release_date.split('-')[0] : '';
         const poster = getPoster(m);
         const sim = showSimilarity && m.distance !== undefined ? '<span class="movie-similarity">' + t('similarity') + ': ' + Math.round(100 / (1 + m.distance)) + '%</span>' : '';
         const title = getTitle(m);
-        return '<div class="movie-card" onclick="openModal(' + m.id + ')"><img class="movie-poster" src="' + poster + '" alt="' + escapeHtml(title) + '" loading="lazy"><div class="movie-info"><div class="movie-title">' + escapeHtml(title) + '</div><div class="movie-meta"><span>' + year + '</span><span class="movie-rating">★ ' + (m.vote_average?.toFixed(1) || '-') + '</span></div>' + sim + '</div></div>';
+        const isWatched = watchedMovieIds.includes(m.id);
+        const watchedClass = isWatched ? ' watched' : '';
+        const watchedBadge = isWatched ? '<span class="movie-card-watched-badge">✓ ' + t('watchedStatus') + '</span>' : '';
+        return '<div class="movie-card' + watchedClass + '" data-movie-id="' + m.id + '" onclick="openModal(' + m.id + ')">' + watchedBadge + '<img class="movie-poster" src="' + poster + '" alt="' + escapeHtml(title) + '" loading="lazy"><div class="movie-info"><div class="movie-title">' + escapeHtml(title) + '</div><div class="movie-meta"><span>' + year + '</span><span class="movie-rating">★ ' + (m.vote_average?.toFixed(1) || '-') + '</span></div>' + sim + '</div></div>';
       }).join('');
+
+      if (append) {
+        grid.innerHTML += html;
+      } else {
+        grid.innerHTML = html;
+      }
     }
 
     function renderProvider(p) {
@@ -1269,7 +2167,14 @@
       // Track view interaction
       trackInteraction('view', id);
 
-      const [fullRes, similarRes] = await Promise.all([fetch('/api/movies/' + id + '/full'), fetch('/api/movies/' + id + '/similar?limit=6')]);
+      // Set current movie ID for watched feature
+      currentModalMovieId = id;
+      currentWatchedData = null;
+
+      // Load watched status (async, don't block modal)
+      loadWatchedStatus(id);
+
+      const [fullRes, similarRes] = await Promise.all([fetch('/api/movies/' + id + '/full?lang=' + currentLang), fetch('/api/movies/' + id + '/similar?limit=6')]);
       const m = await fullRes.json();
       const similarData = await similarRes.json();
       const genres = m.genres ? JSON.parse(m.genres) : [];
@@ -1346,7 +2251,7 @@
       castSec.querySelector('h3').textContent = t('cast');
       if (cast.length > 0) {
         castCon.innerHTML = cast.map(c => {
-          const photo = c.profile_path ? TMDB_PROFILE_BASE + c.profile_path : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23333" width="100" height="100"/></svg>';
+          const photo = c.profile_path ? TMDB_PROFILE_BASE + c.profile_path : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect fill=%27%23333%27 width=%27100%27 height=%27100%27/%3E%3Ctext x=%2750%27 y=%2755%27 text-anchor=%27middle%27 fill=%27%23666%27 font-size=%2730%27%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E';
           const displayName = (currentLang === 'en' && c.name_en) ? c.name_en : c.name;
           return '<div class="cast-item"><img class="cast-photo" src="' + photo + '" alt="' + escapeHtml(displayName) + '" loading="lazy"><p class="cast-name">' + escapeHtml(displayName) + '</p><p class="cast-character">' + escapeHtml(c.character || '') + '</p></div>';
         }).join('');
@@ -1431,7 +2336,8 @@
     loadGenres();
     loadMovies();
     loadRecommendations();
-    initSupabase();
+    loadNowPlaying();
+    initClerk();
 
     // Check if we need to open a movie from chat page
     const movieToOpen = sessionStorage.getItem('ottflix-open-movie');
