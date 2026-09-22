@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-WBKPHWRW');</script>
+<!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>設定 - owlnight</title>
+  <script
+    async
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_cHJpbWUtaGFyZS02MC5jbGVyay5hY2NvdW50cy5kZXYk"
+    src="https://prime-hare-60.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+    type="text/javascript"
+  ></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #141414;
+      color: #fff;
+      min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    .logo {
+      text-decoration: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+    .logo img {
+      height: 28px;
+      width: auto;
+    }
+    .logo:hover { opacity: 0.8; }
+    .back-link {
+      color: #888;
+      text-decoration: none;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .back-link:hover { color: #fff; }
+    main { padding: 2rem; max-width: 800px; margin: 0 auto; }
+    .page-title {
+      font-size: 1.5rem;
+      margin-bottom: 2rem;
+      color: #e50914;
+    }
+    .settings-section {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #fff;
+    }
+    .section-desc {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 1rem;
+    }
+
+    /* Language Toggle */
+    .lang-toggle {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .lang-btn {
+      padding: 0.75rem 1.5rem;
+      background: #333;
+      border: none;
+      border-radius: 8px;
+      color: #888;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .lang-btn:hover {
+      background: #444;
+      color: #fff;
+    }
+    .lang-btn.active {
+      background: #e50914;
+      color: #fff;
+    }
+
+    /* Taste Profile */
+    .profile-section { margin-top: 1rem; }
+    .profile-label {
+      font-size: 0.8rem;
+      color: #666;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .profile-value {
+      color: #fff;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+    .genre-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .genre-tag {
+      background: #333;
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      color: #ccc;
+    }
+    .movie-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .movie-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+    .movie-stars {
+      color: #ffc107;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .stat-item {
+      text-align: center;
+      padding: 1rem;
+      background: #222;
+      border-radius: 8px;
+    }
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #e50914;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: #888;
+      margin-top: 0.25rem;
+    }
+    .no-preference {
+      color: #666;
+      font-style: italic;
+    }
+    .onboarding-summary {
+      white-space: pre-line;
+      font-size: 0.9rem;
+      line-height: 1.8;
+    }
+
+    /* Reset Button */
+    .reset-btn {
+      background: transparent;
+      border: 1px solid #e50914;
+      color: #e50914;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .reset-btn:hover {
+      background: #e50914;
+      color: #fff;
+    }
+
+    /* Confirmation Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-content {
+      background: #1a1a1a;
+      padding: 2rem;
+      border-radius: 12px;
+      max-width: 400px;
+      text-align: center;
+    }
+    .modal-title {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .modal-desc {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+    .modal-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+    .modal-btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      border: none;
+    }
+    .modal-btn-cancel {
+      background: #333;
+      color: #fff;
+    }
+    .modal-btn-cancel:hover { background: #444; }
+    .modal-btn-confirm {
+      background: #e50914;
+      color: #fff;
+    }
+    .modal-btn-confirm:hover { background: #b5070f; }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .user-profile:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #333;
+    }
+    .user-name {
+      font-size: 0.85rem;
+      color: #fff;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .loading { text-align: center; padding: 2rem; color: #888; }
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #666;
+    }
+    .empty-state h2 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+      color: #888;
+    }
+    .empty-state a {
+      color: #e50914;
+      text-decoration: none;
+    }
+    .empty-state a:hover {
+      text-decoration: underline;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      header { padding: 0.75rem 1rem; }
+      .logo img { height: 22px; }
+      main { padding: 1rem; }
+      .settings-section { padding: 1rem; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .lang-toggle { flex-direction: column; }
+      .lang-btn { text-align: center; }
+    }
+  </style>
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WBKPHWRW"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+  <header>
+    <div class="header-left">
+      <a href="/" class="logo"><img src="/owlnight.png" alt="owlnight"></a>
+      <a href="/" class="back-link" id="back-link">&larr; ホームに戻る</a>
+    </div>
+    <div id="user-profile" class="user-profile" style="display:none">
+      <img class="user-avatar" id="user-avatar" src="" alt="">
+      <span class="user-name" id="user-name"></span>
+    </div>
+  </header>
+
+  <main>
+    <h1 class="page-title" id="page-title">設定</h1>
+
+    <div id="content" style="display:none">
+      <!-- Language Settings -->
+      <div class="settings-section">
+        <h2 class="section-title" id="lang-title">言語 / Language</h2>
+        <p class="section-desc" id="lang-desc">映画のタイトルや説明文の表示言語を選択します</p>
+        <div class="lang-toggle">
+          <button class="lang-btn" id="lang-ja" onclick="setLanguage('ja')">日本語</button>
+          <button class="lang-btn" id="lang-en" onclick="setLanguage('en')">English</button>
+        </div>
+      </div>
+
+      <!-- Taste Profile -->
+      <div class="settings-section">
+        <h2 class="section-title" id="taste-title">あなたの映画嗜好</h2>
+        <div id="taste-content">
+          <div class="loading" id="taste-loading">読み込み中...</div>
+        </div>
+      </div>
+
+      <!-- Reset Onboarding -->
+      <div class="settings-section">
+        <h2 class="section-title" id="reset-title">好みの設定</h2>
+        <p class="section-desc" id="reset-desc">好みの設定をやり直して、新しいおすすめを受け取れます</p>
+        <button class="reset-btn" id="reset-btn" onclick="showResetConfirm()">好みをやり直す</button>
+      </div>
+    </div>
+
+    <div class="empty-state" id="empty-state" style="display:none">
+      <h2 id="empty-title">ログインが必要です</h2>
+      <p id="empty-desc">設定を変更するにはログインしてください</p>
+      <a href="/">ホームに戻る &rarr;</a>
+    </div>
+  </main>
+
+  <!-- Reset Confirmation Modal -->
+  <div class="modal-overlay" id="reset-modal">
+    <div class="modal-content">
+      <h3 class="modal-title" id="modal-title">好みをやり直しますか？</h3>
+      <p class="modal-desc" id="modal-desc">現在の好み設定がリセットされ、最初から設定し直すことになります。この操作は取り消せません。</p>
+      <div class="modal-buttons">
+        <button class="modal-btn modal-btn-cancel" onclick="hideResetConfirm()" id="modal-cancel">キャンセル</button>
+        <button class="modal-btn modal-btn-confirm" onclick="confirmReset()" id="modal-confirm">やり直す</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+    let currentLang = localStorage.getItem('ottflix-lang') || 'ja';
+    let clerkInstance = null;
+    let currentUser = null;
+    let authToken = null;
+
+    const i18n = {
+      ja: {
+        pageTitle: '設定',
+        backLink: '&larr; ホームに戻る',
+        langTitle: '言語 / Language',
+        langDesc: '映画のタイトルや説明文の表示言語を選択します',
+        tasteTitle: 'あなたの映画嗜好',
+        resetTitle: '好みの設定',
+        resetDesc: '好みの設定をやり直して、新しいおすすめを受け取れます',
+        resetBtn: '好みをやり直す',
+        modalTitle: '好みをやり直しますか？',
+        modalDesc: '現在の好み設定がリセットされ、最初から設定し直すことになります。この操作は取り消せません。',
+        modalCancel: 'キャンセル',
+        modalConfirm: 'やり直す',
+        emptyTitle: 'ログインが必要です',
+        emptyDesc: '設定を変更するにはログインしてください',
+        loading: '読み込み中...',
+        noPreference: '好みがまだ設定されていません',
+        topGenres: '好きなジャンル',
+        favoriteMovies: '高評価した映画',
+        onboardingSummary: 'オンボーディングのまとめ',
+        totalWatched: '視聴済み',
+        avgRating: '平均評価',
+        watchlist: '見たい映画',
+        movies: '本',
+      },
+      en: {
+        pageTitle: 'Settings',
+        backLink: '&larr; Back to Home',
+        langTitle: 'Language / 言語',
+        langDesc: 'Select the display language for movie titles and descriptions',
+        tasteTitle: 'Your Movie Preferences',
+        resetTitle: 'Preference Settings',
+        resetDesc: 'Reset your preferences to receive new recommendations',
+        resetBtn: 'Reset Preferences',
+        modalTitle: 'Reset your preferences?',
+        modalDesc: 'Your current preference settings will be reset, and you will need to set them up again. This action cannot be undone.',
+        modalCancel: 'Cancel',
+        modalConfirm: 'Reset',
+        emptyTitle: 'Login Required',
+        emptyDesc: 'Please login to change settings',
+        loading: 'Loading...',
+        noPreference: 'Preferences not yet set',
+        topGenres: 'Favorite Genres',
+        favoriteMovies: 'Top Rated Movies',
+        onboardingSummary: 'Onboarding Summary',
+        totalWatched: 'Watched',
+        avgRating: 'Avg Rating',
+        watchlist: 'Watchlist',
+        movies: '',
+      }
+    };
+
+    function t(key) {
+      return i18n[currentLang][key] || i18n['ja'][key] || key;
+    }
+
+    function updateUIText() {
+      document.getElementById('page-title').textContent = t('pageTitle');
+      document.getElementById('back-link').innerHTML = t('backLink');
+      document.getElementById('lang-title').textContent = t('langTitle');
+      document.getElementById('lang-desc').textContent = t('langDesc');
+      document.getElementById('taste-title').textContent = t('tasteTitle');
+      document.getElementById('reset-title').textContent = t('resetTitle');
+      document.getElementById('reset-desc').textContent = t('resetDesc');
+      document.getElementById('reset-btn').textContent = t('resetBtn');
+      document.getElementById('modal-title').textContent = t('modalTitle');
+      document.getElementById('modal-desc').textContent = t('modalDesc');
+      document.getElementById('modal-cancel').textContent = t('modalCancel');
+      document.getElementById('modal-confirm').textContent = t('modalConfirm');
+      document.getElementById('empty-title').textContent = t('emptyTitle');
+      document.getElementById('empty-desc').textContent = t('emptyDesc');
+      document.getElementById('taste-loading').textContent = t('loading');
+
+      // Update language button states
+      document.getElementById('lang-ja').classList.toggle('active', currentLang === 'ja');
+      document.getElementById('lang-en').classList.toggle('active', currentLang === 'en');
+    }
+
+    function waitForClerk() {
+      return new Promise((resolve) => {
+        if (window.Clerk) {
+          resolve(window.Clerk);
+        } else {
+          const check = setInterval(() => {
+            if (window.Clerk) {
+              clearInterval(check);
+              resolve(window.Clerk);
+            }
+          }, 100);
+          setTimeout(() => {
+            clearInterval(check);
+            resolve(null);
+          }, 10000);
+        }
+      });
+    }
+
+    async function getAuthHeaders() {
+      if (clerkInstance && clerkInstance.session) {
+        try {
+          authToken = await clerkInstance.session.getToken();
+        } catch (e) {
+          authToken = null;
+        }
+      }
+      return authToken ? { 'Authorization': 'Bearer ' + authToken } : {};
+    }
+
+    async function initClerk() {
+      try {
+        const clerk = await waitForClerk();
+        if (!clerk) {
+          showLoginRequired();
+          return;
+        }
+
+        await clerk.load();
+        clerkInstance = clerk;
+
+        if (clerkInstance.user && clerkInstance.session) {
+          authToken = await clerkInstance.session.getToken();
+          await checkAuth();
+        } else {
+          showLoginRequired();
+        }
+      } catch (e) {
+        console.error('Failed to init Clerk:', e);
+        showLoginRequired();
+      }
+    }
+
+    async function checkAuth() {
+      if (!authToken) {
+        showLoginRequired();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: await getAuthHeaders()
+        });
+
+        if (res.ok) {
+          currentUser = await res.json();
+          // Update language from server if available
+          if (currentUser.language && currentUser.language !== currentLang) {
+            currentLang = currentUser.language;
+            localStorage.setItem('ottflix-lang', currentLang);
+          }
+          updateUI();
+          loadTasteProfile();
+        } else {
+          showLoginRequired();
+        }
+      } catch (e) {
+        showLoginRequired();
+      }
+    }
+
+    function updateUI() {
+      if (currentUser) {
+        document.getElementById('user-profile').style.display = 'flex';
+        document.getElementById('user-avatar').src = currentUser.picture || '';
+        document.getElementById('user-name').textContent = currentUser.name || currentUser.email.split('@')[0];
+        document.getElementById('content').style.display = 'block';
+        updateUIText();
+      }
+    }
+
+    function showLoginRequired() {
+      document.getElementById('content').style.display = 'none';
+      document.getElementById('empty-state').style.display = 'block';
+      updateUIText();
+    }
+
+    async function loadTasteProfile() {
+      const container = document.getElementById('taste-content');
+
+      try {
+        const res = await fetch('/api/user/taste-profile', {
+          headers: await getAuthHeaders()
+        });
+        const data = await res.json();
+
+        if (!data.hasPreference && data.stats.totalWatched === 0) {
+          container.innerHTML = '<p class="no-preference">' + t('noPreference') + '</p>';
+          return;
+        }
+
+        let html = '';
+
+        // Onboarding Summary
+        if (data.onboardingSummary) {
+          html += '<div class="profile-section">';
+          html += '<div class="profile-label">' + t('onboardingSummary') + '</div>';
+          html += '<div class="profile-value onboarding-summary">' + escapeHtml(data.onboardingSummary) + '</div>';
+          html += '</div>';
+        }
+
+        // Top Genres
+        if (data.topGenres && data.topGenres.length > 0) {
+          html += '<div class="profile-section">';
+          html += '<div class="profile-label">' + t('topGenres') + '</div>';
+          html += '<div class="genre-tags">';
+          for (const genre of data.topGenres) {
+            html += '<span class="genre-tag">' + escapeHtml(genre) + '</span>';
+          }
+          html += '</div></div>';
+        }
+
+        // Favorite Movies
+        if (data.favoriteMovies && data.favoriteMovies.length > 0) {
+          html += '<div class="profile-section">';
+          html += '<div class="profile-label">' + t('favoriteMovies') + '</div>';
+          html += '<div class="movie-list">';
+          for (const movie of data.favoriteMovies) {
+            const stars = '<span class="movie-stars">' + '★'.repeat(movie.rating) + '</span>';
+            html += '<div class="movie-item">' + escapeHtml(movie.title) + ' ' + stars + '</div>';
+          }
+          html += '</div></div>';
+        }
+
+        // Stats
+        html += '<div class="stats-grid">';
+        html += '<div class="stat-item"><div class="stat-value">' + data.stats.totalWatched + '</div><div class="stat-label">' + t('totalWatched') + (currentLang === 'ja' ? t('movies') : '') + '</div></div>';
+        html += '<div class="stat-item"><div class="stat-value">' + (data.stats.averageRating || '-') + '</div><div class="stat-label">' + t('avgRating') + '</div></div>';
+        html += '<div class="stat-item"><div class="stat-value">' + data.stats.totalInWatchlist + '</div><div class="stat-label">' + t('watchlist') + '</div></div>';
+        html += '</div>';
+
+        container.innerHTML = html;
+      } catch (e) {
+        console.error('Failed to load taste profile:', e);
+        container.innerHTML = '<p class="no-preference">Error loading profile</p>';
+      }
+    }
+
+    async function setLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem('ottflix-lang', lang);
+      updateUIText();
+
+      // Update language on server
+      try {
+        await fetch('/api/user/language', {
+          method: 'PUT',
+          headers: {
+            ...await getAuthHeaders(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ language: lang })
+        });
+      } catch (e) {
+        console.error('Failed to save language:', e);
+      }
+
+      // Reload taste profile to show updated language
+      loadTasteProfile();
+    }
+
+    function showResetConfirm() {
+      document.getElementById('reset-modal').classList.add('active');
+    }
+
+    function hideResetConfirm() {
+      document.getElementById('reset-modal').classList.remove('active');
+    }
+
+    async function confirmReset() {
+      hideResetConfirm();
+
+      try {
+        const res = await fetch('/api/user/reset-onboarding', {
+          method: 'POST',
+          headers: await getAuthHeaders()
+        });
+
+        if (res.ok) {
+          // Redirect to home page to start onboarding
+          window.location.href = '/';
+        } else {
+          alert('Failed to reset preferences');
+        }
+      } catch (e) {
+        console.error('Failed to reset onboarding:', e);
+        alert('Failed to reset preferences');
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Close modal on outside click
+    document.getElementById('reset-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'reset-modal') {
+        hideResetConfirm();
+      }
+    });
+
+    // Initialize
+    updateUIText();
+    initClerk();
+  </script>
+</body>
+</html>

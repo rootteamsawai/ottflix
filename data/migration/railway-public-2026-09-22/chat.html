@@ -1,0 +1,2334 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-WBKPHWRW');</script>
+<!-- End Google Tag Manager -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>AI映画診断 - owlnight</title>
+  <link rel="stylesheet" href="/css/modal.css">
+  <script
+    async
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_cHJpbWUtaGFyZS02MC5jbGVyay5hY2NvdW50cy5kZXYk"
+    src="https://prime-hare-60.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+    type="text/javascript"
+  ></script>
+  <script src="/js/modal.js"></script>
+  <script src="/js/watchlist.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      scrollbar-width: none;
+    }
+    html::-webkit-scrollbar, body::-webkit-scrollbar {
+      display: none;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* Main Layout - Sidebar + Chat */
+    .app-layout {
+      display: flex;
+      height: 100%;
+      width: 100%;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background: #0f0f0f;
+      border-right: 1px solid #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .sidebar-header {
+      padding: 1rem;
+      padding-top: calc(1rem + env(safe-area-inset-top));
+      border-bottom: 1px solid #1a1a1a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sidebar-title {
+      font-size: 0.9rem;
+      color: #888;
+      font-weight: 500;
+    }
+    .new-chat-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .new-chat-btn:hover { opacity: 0.9; }
+    .thread-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+      scrollbar-width: none;
+    }
+    .thread-list::-webkit-scrollbar { display: none; }
+    .thread-item {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .thread-item:hover { background: #1a1a1a; }
+    .thread-item.active { background: #1f1f1f; }
+    .thread-item-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .thread-item-title {
+      font-size: 0.9rem;
+      color: #e0e0e0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .thread-item-date {
+      font-size: 0.7rem;
+      color: #666;
+      margin-top: 0.2rem;
+    }
+    .thread-item-thumbnails {
+      display: flex;
+      gap: 4px;
+      margin-top: 0.35rem;
+    }
+    .thread-item-thumbnail {
+      width: 28px;
+      height: 42px;
+      border-radius: 4px;
+      object-fit: cover;
+      background: #222;
+    }
+    .thread-item-delete {
+      opacity: 0;
+      background: transparent;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      padding: 0.25rem;
+      font-size: 1rem;
+      transition: opacity 0.2s, color 0.2s;
+    }
+    .thread-item:hover .thread-item-delete { opacity: 1; }
+    .thread-item-delete:hover { color: #e50914; }
+    .sidebar-login {
+      padding: 1rem;
+      border-top: 1px solid #1a1a1a;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #666;
+    }
+    .sidebar-login a {
+      color: #667eea;
+      text-decoration: none;
+    }
+    .sidebar-login a:hover { text-decoration: underline; }
+
+    /* Toggle sidebar button (mobile) */
+    .sidebar-toggle {
+      display: none;
+      background: transparent;
+      border: 1px solid #333;
+      color: #888;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .sidebar-toggle:hover { border-color: #555; color: #fff; }
+
+    /* Main content wrapper - centers the chat */
+    .main-content {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      height: 100%;
+      min-width: 0;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 800px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: #0a0a0a;
+    }
+
+    /* Header */
+    .chat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      padding-top: calc(1rem + env(safe-area-inset-top));
+      background: #0a0a0a;
+      border-bottom: 1px solid #1a1a1a;
+      flex-shrink: 0;
+    }
+    .chat-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .back-link {
+      color: #888;
+      text-decoration: none;
+      font-size: 1.25rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #fff; }
+    .chat-header h1 {
+      font-size: 1.1rem;
+      color: #fff;
+      font-weight: 600;
+    }
+    .chat-reset {
+      background: transparent;
+      border: 1px solid #333;
+      color: #888;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .chat-reset:hover { border-color: #555; color: #fff; }
+
+    /* Messages area */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .chat-messages::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Message styles */
+    .chat-message {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .chat-message.user {
+      align-items: flex-end;
+    }
+    .chat-message.assistant {
+      align-items: flex-start;
+    }
+    .message-content {
+      max-width: 85%;
+      padding: 1rem 1.25rem;
+      border-radius: 1.25rem;
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+    .chat-message.user .message-content {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border-bottom-right-radius: 0.25rem;
+    }
+    .chat-message.assistant .message-content {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      border-bottom-left-radius: 0.25rem;
+    }
+
+    /* Movie Carousel */
+    .movie-carousel {
+      width: 100%;
+      max-width: 100%;
+      overflow: hidden;
+    }
+    .movie-carousel-inner {
+      display: flex;
+      gap: 0.75rem;
+      overflow-x: auto;
+      padding: 0.5rem 0;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .movie-carousel-inner::-webkit-scrollbar {
+      display: none;
+    }
+    .movie-card {
+      flex-shrink: 0;
+      width: 140px;
+      background: #141414;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      scroll-snap-align: start;
+      border: 2px solid transparent;
+    }
+    .movie-card:hover {
+      transform: scale(1.03);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+    }
+    .movie-card:active {
+      transform: scale(0.98);
+    }
+    .movie-card img {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      background: #222;
+    }
+    .movie-card-info {
+      padding: 0.6rem 0.75rem;
+    }
+    .movie-card-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.2rem;
+    }
+    .movie-card-meta {
+      font-size: 0.7rem;
+      color: #888;
+      display: flex;
+      justify-content: space-between;
+    }
+    .movie-card-rating { color: #ffc107; }
+
+    /* Typing indicator */
+    .chat-typing {
+      display: flex;
+      gap: 5px;
+      padding: 1rem 1.25rem;
+      background: #1a1a1a;
+      border-radius: 1.25rem;
+      border-bottom-left-radius: 0.25rem;
+      max-width: 80px;
+    }
+    .chat-typing span {
+      width: 8px;
+      height: 8px;
+      background: #444;
+      border-radius: 50%;
+      animation: typing 1.4s infinite ease-in-out both;
+    }
+    .chat-typing span:nth-child(1) { animation-delay: -0.32s; }
+    .chat-typing span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes typing {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Input area */
+    .chat-input-area {
+      padding: 1rem 1.5rem;
+      padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+      background: #0a0a0a;
+      border-top: 1px solid #1a1a1a;
+      flex-shrink: 0;
+    }
+
+    .chat-input-wrapper {
+      display: flex;
+      gap: 0.75rem;
+      background: #1a1a1a;
+      border-radius: 1.5rem;
+      padding: 0.5rem;
+      border: 1px solid #2a2a2a;
+      transition: border-color 0.2s;
+    }
+    .chat-input-wrapper:focus-within {
+      border-color: #667eea;
+    }
+    .chat-input-wrapper input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: none;
+      background: transparent;
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+    }
+    .chat-input-wrapper input::placeholder { color: #666; }
+
+    .chat-send-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .chat-send-btn:hover { opacity: 0.9; }
+    .chat-send-btn:active { transform: scale(0.95); }
+    .chat-send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Reply Templates (shown after AI recommends movies) */
+    .reply-templates {
+      display: none;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      justify-content: center;
+    }
+    .reply-templates.active {
+      display: flex;
+    }
+    .reply-template-btn {
+      padding: 0.5rem 1rem;
+      background: rgba(17, 24, 39, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(107, 114, 128, 0.3);
+      border-radius: 9999px;
+      color: rgba(209, 213, 219, 0.9);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+    .reply-template-btn:hover {
+      border-color: rgba(147, 51, 234, 0.6);
+      color: #fff;
+      background: rgba(147, 51, 234, 0.15);
+      box-shadow: 0 0 15px rgba(147, 51, 234, 0.2);
+      transform: translateY(-2px);
+    }
+    .reply-template-btn:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    /* Watched Button with Rating Tooltip */
+    .watched-btn-container {
+      position: relative;
+      display: inline-block;
+    }
+
+    .rating-tooltip {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%) scale(0.9);
+      background: rgba(17, 24, 39, 0.95);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border: 1px solid rgba(147, 51, 234, 0.4);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      z-index: 100;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      transition: all 0.2s ease;
+    }
+
+    .rating-tooltip.active {
+      display: flex;
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+
+    .rating-tooltip::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-top: 8px solid rgba(147, 51, 234, 0.4);
+    }
+
+    .rating-tooltip-label {
+      font-size: 0.75rem;
+      color: rgba(209, 213, 219, 0.8);
+      white-space: nowrap;
+    }
+
+    .rating-stars {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .rating-star {
+      width: 28px;
+      height: 28px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.4rem;
+      color: rgba(107, 114, 128, 0.5);
+      transition: all 0.15s ease;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .rating-star:hover,
+    .rating-star.hovered {
+      color: #fbbf24;
+      transform: scale(1.2);
+    }
+
+    .rating-star.selected {
+      color: #fbbf24;
+    }
+
+    /* Suggestion Chips */
+    .suggestion-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      justify-content: center;
+    }
+    .suggestion-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: transparent;
+      border: 1px solid #333;
+      border-radius: 2rem;
+      color: #999;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .suggestion-chip:hover {
+      border-color: #667eea;
+      color: #fff;
+      background: rgba(102, 126, 234, 0.1);
+    }
+    .suggestion-chip:active {
+      transform: scale(0.98);
+    }
+    .suggestion-chip-icon {
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    /* Right Sidebar - AI Recommendations */
+    .recommendations-sidebar {
+      width: 320px;
+      background: #0f0f0f;
+      border-left: 1px solid #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .recommendations-header {
+      padding: 1rem 1.25rem;
+      padding-top: calc(1rem + env(safe-area-inset-top));
+      border-bottom: 1px solid #1a1a1a;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .recommendations-header-icon {
+      font-size: 1.1rem;
+    }
+    .recommendations-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .recommendations-subtitle {
+      font-size: 0.75rem;
+      color: #666;
+      padding: 0.5rem 1.25rem;
+    }
+    .recommendations-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+      scrollbar-width: none;
+    }
+    .recommendations-list::-webkit-scrollbar { display: none; }
+    .recommendation-item {
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-bottom: 0.5rem;
+    }
+    .recommendation-item:hover { background: #1a1a1a; }
+    .recommendation-poster {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .recommendation-poster img {
+      width: 70px;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #222;
+    }
+    .recommendation-rating-badge {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      background: rgba(0, 0, 0, 0.85);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+    .recommendation-rating-badge .star {
+      color: #ffc107;
+      font-size: 0.6rem;
+    }
+    .recommendation-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .recommendation-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .recommendation-meta {
+      font-size: 0.75rem;
+      color: #888;
+    }
+    .recommendation-reason {
+      font-size: 0.75rem;
+      color: #aaa;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-top: 0.25rem;
+    }
+    .recommendation-date {
+      font-size: 0.65rem;
+      color: #555;
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .recommendation-arrow {
+      color: #444;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+      align-self: center;
+    }
+    .recommendations-footer {
+      padding: 0.75rem 1rem;
+      border-top: 1px solid #1a1a1a;
+      font-size: 0.8rem;
+      color: #666;
+      text-align: center;
+    }
+    .recommendations-empty {
+      padding: 2rem 1rem;
+      text-align: center;
+      color: #555;
+      font-size: 0.85rem;
+    }
+
+    /* Right sidebar toggle (tablet/mobile) */
+    .recommendations-toggle {
+      display: none;
+      position: fixed;
+      bottom: calc(80px + env(safe-area-inset-bottom));
+      right: 1rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border: none;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.2rem;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      z-index: 300;
+      transition: transform 0.2s;
+    }
+    .recommendations-toggle:hover { transform: scale(1.05); }
+    .recommendations-toggle .badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #e50914;
+      color: #fff;
+      font-size: 0.7rem;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+
+    @media (max-width: 1100px) {
+      .recommendations-sidebar {
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 500;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+      }
+      .recommendations-sidebar.open { transform: translateX(0); }
+      .recommendations-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 400;
+      }
+      .recommendations-overlay.active { display: block; }
+      .recommendations-toggle { display: flex; }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 500;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 400;
+      }
+      .sidebar-overlay.active { display: block; }
+      .sidebar-toggle { display: flex; }
+      .app-container { max-width: 100%; }
+      .recommendations-sidebar { width: 280px; }
+    }
+
+    @media (max-width: 600px) {
+      .chat-messages { padding: 1rem; }
+      .message-content { max-width: 90%; font-size: 0.9rem; }
+      .movie-card { width: 120px; }
+      .movie-card-info { padding: 0.5rem; }
+      .movie-card-title { font-size: 0.75rem; }
+    }
+
+    /* Extended Info - Trailer & OTT */
+    .extended-info {
+      margin-top: 1rem;
+      width: 100%;
+      max-width: 100%;
+    }
+    .extended-section {
+      margin-bottom: 1rem;
+    }
+    .extended-section-title {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 0.5rem;
+    }
+    .trailer-list {
+      display: flex;
+      gap: 0.75rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+      scrollbar-width: none;
+    }
+    .trailer-list::-webkit-scrollbar {
+      display: none;
+    }
+    .trailer-item {
+      flex-shrink: 0;
+      width: 200px;
+      cursor: pointer;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #1a1a1a;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .trailer-item:hover {
+      transform: scale(1.03);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+    }
+    .trailer-thumbnail {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+    }
+    .trailer-thumbnail img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .trailer-play-btn {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.4);
+      transition: background 0.2s;
+    }
+    .trailer-item:hover .trailer-play-btn {
+      background: rgba(0,0,0,0.2);
+    }
+    .trailer-play-btn span {
+      font-size: 2.5rem;
+      color: #fff;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .trailer-name {
+      padding: 0.5rem;
+      font-size: 0.8rem;
+      color: #ccc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .provider-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .provider-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: #1a1a1a;
+      border-radius: 8px;
+      text-decoration: none;
+      color: #fff;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .provider-item:hover {
+      background: #2a2a2a;
+      transform: translateY(-2px);
+    }
+    .provider-logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      object-fit: cover;
+    }
+    .provider-name {
+      font-size: 0.85rem;
+    }
+    .provider-type {
+      font-size: 0.7rem;
+      color: #888;
+    }
+
+    @media (max-width: 600px) {
+      .trailer-item { width: 160px; }
+      .trailer-play-btn span { font-size: 2rem; }
+      .provider-logo { width: 24px; height: 24px; }
+    }
+  </style>
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WBKPHWRW"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+  <div class="app-layout">
+    <!-- Sidebar for thread history -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">履歴</span>
+        <button class="new-chat-btn" onclick="startNewChat()">+ 新規</button>
+      </div>
+      <div class="thread-list" id="thread-list">
+        <!-- Threads loaded dynamically -->
+      </div>
+      <div class="sidebar-login" id="sidebar-login" style="display:none">
+        <a href="/">ログイン</a>して履歴を保存
+      </div>
+    </aside>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <div class="main-content">
+      <div class="app-container">
+      <header class="chat-header">
+        <div class="chat-header-left">
+          <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+          <a href="/" class="back-link">←</a>
+          <h1>AI映画診断</h1>
+        </div>
+        <button class="chat-reset" onclick="resetChat()" title="リセット">↺</button>
+      </header>
+
+      <div class="chat-messages" id="chat-messages"></div>
+
+      <div class="chat-input-area">
+        <!-- Reply Templates (shown after AI recommends movies) -->
+        <div class="reply-templates" id="reply-templates">
+          <button class="reply-template-btn" onclick="useReplyTemplate('ok')">👍 良さそう</button>
+          <div class="watched-btn-container">
+            <div class="rating-tooltip" id="rating-tooltip">
+              <span class="rating-tooltip-label">評価してください</span>
+              <div class="rating-stars">
+                <button class="rating-star" data-rating="1" onclick="submitWatchedWithRating(1)" onmouseenter="hoverStar(1)" onmouseleave="unhoverStars()">★</button>
+                <button class="rating-star" data-rating="2" onclick="submitWatchedWithRating(2)" onmouseenter="hoverStar(2)" onmouseleave="unhoverStars()">★</button>
+                <button class="rating-star" data-rating="3" onclick="submitWatchedWithRating(3)" onmouseenter="hoverStar(3)" onmouseleave="unhoverStars()">★</button>
+                <button class="rating-star" data-rating="4" onclick="submitWatchedWithRating(4)" onmouseenter="hoverStar(4)" onmouseleave="unhoverStars()">★</button>
+                <button class="rating-star" data-rating="5" onclick="submitWatchedWithRating(5)" onmouseenter="hoverStar(5)" onmouseleave="unhoverStars()">★</button>
+              </div>
+            </div>
+            <button class="reply-template-btn" id="watched-btn" onclick="toggleRatingTooltip(event)">✅ 見た</button>
+          </div>
+          <button class="reply-template-btn" onclick="useReplyTemplate('want')">🩷 みたい</button>
+          <button class="reply-template-btn" onclick="useReplyTemplate('notinterested')">🚫 興味なし</button>
+          <button class="reply-template-btn" onclick="useReplyTemplate('next')">➡️ 次</button>
+        </div>
+        <div class="chat-input-wrapper">
+          <input type="text" id="chat-input" placeholder="どんな映画が見たいですか？" onkeypress="handleKeypress(event)">
+          <button class="chat-send-btn" id="send-btn" onclick="sendChat()">↑</button>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <!-- Right Sidebar - AI Recommendations -->
+    <aside class="recommendations-sidebar" id="recommendations-sidebar">
+      <div class="recommendations-header">
+        <span class="recommendations-header-icon">✨</span>
+        <h2>AIレコメンド</h2>
+      </div>
+      <div class="recommendations-subtitle">あなたのために選んだ作品</div>
+      <div class="recommendations-list" id="recommendations-list">
+        <div class="recommendations-empty">
+          会話を始めると、おすすめの映画がここに表示されます
+        </div>
+      </div>
+      <div class="recommendations-footer" id="recommendations-footer" style="display:none">
+        合計レコメンド: <span id="recommendations-count">0</span>
+      </div>
+    </aside>
+    <div class="recommendations-overlay" id="recommendations-overlay" onclick="closeRecommendationsSidebar()"></div>
+
+    <!-- Recommendations Toggle Button (mobile/tablet) -->
+    <button class="recommendations-toggle" id="recommendations-toggle" onclick="toggleRecommendationsSidebar()">
+      ✨
+      <span class="badge" id="recommendations-badge" style="display:none">0</span>
+    </button>
+  </div>
+
+  <!-- Movie Detail Modal (shared with index.html) -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <img class="modal-backdrop" id="modal-backdrop" src="" alt="">
+        <button class="modal-close" onclick="MovieModal.closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h1 class="modal-title" id="modal-title"></h1>
+        <p class="modal-title-ja" id="modal-title-ja"></p>
+        <p class="modal-tagline" id="modal-tagline"></p>
+        <!-- Watched Button and Star Rating -->
+        <div class="watched-container" id="watched-container" style="display:none">
+          <button class="watched-btn" id="watched-btn" onclick="toggleWatchedUI()">
+            <span id="watched-btn-icon">✅</span>
+            <span id="watched-btn-text">見た</span>
+          </button>
+          <div class="star-rating" id="star-rating">
+            <span class="star" data-rating="1" onclick="setRating(1)" onmouseenter="hoverRating(1)" onmouseleave="resetRatingHover()">★</span>
+            <span class="star" data-rating="2" onclick="setRating(2)" onmouseenter="hoverRating(2)" onmouseleave="resetRatingHover()">★</span>
+            <span class="star" data-rating="3" onclick="setRating(3)" onmouseenter="hoverRating(3)" onmouseleave="resetRatingHover()">★</span>
+            <span class="star" data-rating="4" onclick="setRating(4)" onmouseenter="hoverRating(4)" onmouseleave="resetRatingHover()">★</span>
+            <span class="star" data-rating="5" onclick="setRating(5)" onmouseenter="hoverRating(5)" onmouseleave="resetRatingHover()">★</span>
+          </div>
+          <div class="watched-rating-display" id="watched-rating-display" style="display:none" onclick="showStarRating()">
+            <span id="current-rating-stars"></span>
+          </div>
+          <button class="remove-watched-btn" id="remove-watched-btn" style="display:none" onclick="removeWatched()" title="Remove from watched">&#10005;</button>
+          <button class="want-to-watch-btn" id="want-to-watch-btn" onclick="toggleWantToWatch()">
+            <span id="want-to-watch-btn-icon">🩷</span>
+            <span id="want-to-watch-btn-text">みたい</span>
+          </button>
+          <button class="remove-want-to-watch-btn" id="remove-want-to-watch-btn" style="display:none" onclick="removeWantToWatch()" title="みたいを取り消す">&#10005;</button>
+          <span class="button-separator"></span>
+          <button class="not-interested-btn" id="not-interested-btn" onclick="toggleNotInterested()">
+            <span id="not-interested-btn-icon">🚫</span>
+            <span id="not-interested-btn-text">興味なし</span>
+          </button>
+          <button class="remove-not-interested-btn" id="remove-not-interested-btn" style="display:none" onclick="removeNotInterested()" title="興味なしを取り消す">&#10005;</button>
+        </div>
+        <div class="modal-genres" id="modal-genres"></div>
+        <div class="modal-meta" id="modal-meta"></div>
+        <p class="modal-overview" id="modal-overview"></p>
+        <div class="extended-section" id="extended-section"><h3>詳細情報</h3><div class="extended-grid" id="extended-content"></div></div>
+        <div class="providers-section" id="providers-section"><h3>どこで見れる</h3><div id="providers-content"></div></div>
+        <div class="videos-section" id="videos-section"><h3>予告編</h3><div class="video-list" id="videos-content"></div></div>
+        <div class="cast-section" id="cast-section"><h3>キャスト</h3><div class="cast-list" id="cast-content"></div></div>
+        <div class="crew-section" id="crew-section"><h3>スタッフ</h3><div class="crew-list" id="crew-content"></div></div>
+        <div class="reviews-section" id="reviews-section"><h3>レビュー</h3><div class="review-list" id="reviews-content"></div></div>
+        <div class="tmdb-similar-section" id="tmdb-similar-section"><h3>関連作品</h3><div class="similar-movies" id="tmdb-similar-content"></div></div>
+        <div class="similar-section"><h3>似ている映画 (AI)</h3><div class="similar-movies" id="similar-movies"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video Modal -->
+  <div class="video-modal-overlay" id="video-modal">
+    <div class="video-modal">
+      <button class="video-modal-close" onclick="MovieModal.closeVideoModal()">&times;</button>
+      <iframe id="video-iframe" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <script>
+    const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+    let chatMessages = [];
+    let isSending = false;
+    let currentThreadId = null;
+    let threads = [];
+    let currentUser = null;
+
+    // Language detection (same as index.html)
+    function detectBrowserLanguage() {
+      const stored = localStorage.getItem('ottflix-lang');
+      if (stored) return stored;
+      const browserLang = navigator.language || navigator.languages?.[0] || 'ja';
+      const detectedLang = browserLang.startsWith('en') ? 'en' : 'ja';
+      localStorage.setItem('ottflix-lang', detectedLang);
+      return detectedLang;
+    }
+    const currentLang = detectBrowserLanguage();
+
+    // ============================================
+    // Sidebar Functions
+    // ============================================
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebar-overlay').classList.toggle('active');
+    }
+
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebar-overlay').classList.remove('active');
+    }
+
+    // ============================================
+    // Recommendations Sidebar Functions
+    // ============================================
+    let allRecommendations = []; // Store all recommendations from the session
+
+    function toggleRecommendationsSidebar() {
+      document.getElementById('recommendations-sidebar').classList.toggle('open');
+      document.getElementById('recommendations-overlay').classList.toggle('active');
+    }
+
+    function closeRecommendationsSidebar() {
+      document.getElementById('recommendations-sidebar').classList.remove('open');
+      document.getElementById('recommendations-overlay').classList.remove('active');
+    }
+
+    function addRecommendationsToSidebar(movies, userMessage = '') {
+      if (!movies || movies.length === 0) return;
+
+      // Add movies with timestamp and user message context
+      const timestamp = new Date();
+      movies.forEach(movie => {
+        // Check if movie already exists in recommendations
+        const existingIndex = allRecommendations.findIndex(r => r.id === movie.id);
+        if (existingIndex === -1) {
+          allRecommendations.unshift({
+            ...movie,
+            recommendedAt: timestamp,
+            reason: userMessage
+          });
+        }
+      });
+
+      renderRecommendationsSidebar();
+    }
+
+    function renderRecommendationsSidebar() {
+      const container = document.getElementById('recommendations-list');
+      const footer = document.getElementById('recommendations-footer');
+      const badge = document.getElementById('recommendations-badge');
+      const countEl = document.getElementById('recommendations-count');
+
+      if (allRecommendations.length === 0) {
+        container.innerHTML = `<div class="recommendations-empty">
+          ${currentLang === 'ja' ? '会話を始めると、おすすめの映画がここに表示されます' : 'Start a conversation to see movie recommendations here'}
+        </div>`;
+        footer.style.display = 'none';
+        badge.style.display = 'none';
+        return;
+      }
+
+      container.innerHTML = allRecommendations.map(movie => {
+        const poster = movie.poster_path
+          ? TMDB_IMAGE_BASE + movie.poster_path
+          : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 200 300%27%3E%3Crect fill=%27%23222%27 width=%27200%27 height=%27300%27/%3E%3Ctext x=%27100%27 y=%27150%27 text-anchor=%27middle%27 fill=%27%23555%27 font-size=%2740%27%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E';
+        const title = getTitle(movie);
+        const year = movie.release_date ? movie.release_date.split('-')[0] : '';
+        const rating = movie.vote_average?.toFixed(1) || '-';
+        const genres = movie.genres?.slice(0, 2).map(g => g.name || g).join('、') || '';
+        const timeAgo = formatRecommendationTime(movie.recommendedAt);
+
+        return `
+          <div class="recommendation-item" onclick="showMovieDetail(${movie.id})">
+            <div class="recommendation-poster">
+              <img src="${poster}" alt="${escapeHtml(title)}" loading="lazy">
+              <div class="recommendation-rating-badge">
+                <span class="star">★</span>
+                ${rating}
+              </div>
+            </div>
+            <div class="recommendation-info">
+              <div class="recommendation-title">${escapeHtml(title)}</div>
+              <div class="recommendation-meta">${year}${genres ? ' • ' + genres : ''}</div>
+              ${movie.reason ? `<div class="recommendation-reason">${escapeHtml(truncateReason(movie.reason))}</div>` : ''}
+              <div class="recommendation-date">🕐 ${timeAgo}</div>
+            </div>
+            <span class="recommendation-arrow">›</span>
+          </div>
+        `;
+      }).join('');
+
+      footer.style.display = 'block';
+      countEl.textContent = allRecommendations.length;
+      badge.textContent = allRecommendations.length;
+      badge.style.display = 'flex';
+    }
+
+    function formatRecommendationTime(date) {
+      const now = new Date();
+      const diff = now - date;
+      const minutes = Math.floor(diff / (1000 * 60));
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+
+      if (minutes < 1) return currentLang === 'ja' ? 'たった今' : 'Just now';
+      if (minutes < 60) return currentLang === 'ja' ? `${minutes}分前` : `${minutes}m ago`;
+      if (hours < 24) return currentLang === 'ja' ? `${hours}時間前` : `${hours}h ago`;
+      return formatDate(date);
+    }
+
+    function truncateReason(reason) {
+      if (!reason) return '';
+      // Extract a short meaningful reason from the user message
+      const maxLen = 40;
+      if (reason.length <= maxLen) return reason;
+      return reason.slice(0, maxLen) + '...';
+    }
+
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diff = now - date;
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+      if (days === 0) return currentLang === 'ja' ? '今日' : 'Today';
+      if (days === 1) return currentLang === 'ja' ? '昨日' : 'Yesterday';
+      if (days < 7) return currentLang === 'ja' ? `${days}日前` : `${days} days ago`;
+      return date.toLocaleDateString(currentLang === 'ja' ? 'ja-JP' : 'en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function renderThreadList() {
+      const container = document.getElementById('thread-list');
+      const loginPrompt = document.getElementById('sidebar-login');
+
+      if (!currentUser) {
+        container.innerHTML = '';
+        loginPrompt.style.display = 'block';
+        if (currentLang === 'en') {
+          loginPrompt.innerHTML = '<a href="/">Login</a> to save history';
+        }
+        return;
+      }
+
+      loginPrompt.style.display = 'none';
+
+      if (threads.length === 0) {
+        container.innerHTML = `<div style="padding: 1rem; text-align: center; color: #666; font-size: 0.85rem;">
+          ${currentLang === 'ja' ? '履歴がありません' : 'No history'}
+        </div>`;
+        return;
+      }
+
+      container.innerHTML = threads.map(t => {
+        const thumbnailsHtml = (t.thumbnails && t.thumbnails.length > 0)
+          ? `<div class="thread-item-thumbnails">${t.thumbnails.map(p =>
+              `<img class="thread-item-thumbnail" src="${TMDB_IMAGE_BASE}${p}" alt="" loading="lazy">`
+            ).join('')}</div>`
+          : '';
+        return `
+        <div class="thread-item ${t.id === currentThreadId ? 'active' : ''}" onclick="loadThread(${t.id})">
+          <div class="thread-item-content">
+            <div class="thread-item-title">${escapeHtml(t.title || 'New Chat')}</div>
+            <div class="thread-item-date">${formatDate(t.updated_at)}</div>
+            ${thumbnailsHtml}
+          </div>
+          <button class="thread-item-delete" onclick="event.stopPropagation(); deleteThread(${t.id})" title="${currentLang === 'ja' ? '削除' : 'Delete'}">×</button>
+        </div>
+      `;
+      }).join('');
+    }
+
+    async function loadThreads() {
+      if (!currentUser) {
+        threads = [];
+        renderThreadList();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/chat/threads', {
+          headers: await getAuthHeaders()
+        });
+        if (res.ok) {
+          const data = await res.json();
+          threads = data.threads || [];
+          renderThreadList();
+        }
+      } catch (e) {
+        console.error('Failed to load threads:', e);
+      }
+    }
+
+    async function loadThread(threadId) {
+      if (!currentUser) return;
+
+      try {
+        const res = await fetch('/api/chat/threads/' + threadId, {
+          headers: await getAuthHeaders()
+        });
+        if (res.ok) {
+          const thread = await res.json();
+          currentThreadId = thread.id;
+          chatMessages = thread.messages || [];
+
+          // Re-render messages
+          const container = document.getElementById('chat-messages');
+          container.innerHTML = '';
+
+          // Reset and rebuild recommendations from thread
+          allRecommendations = [];
+          let lastUserMessage = '';
+          chatMessages.forEach(msg => {
+            addMessageToUI(msg.role, msg.content, msg.movies || [], msg.extendedInfo || null);
+
+            // Track user messages for recommendation context
+            if (msg.role === 'user') {
+              lastUserMessage = msg.content;
+            }
+            // Add movies from assistant messages to recommendations
+            if (msg.role === 'assistant' && msg.movies && msg.movies.length > 0) {
+              msg.movies.forEach(movie => {
+                const existingIndex = allRecommendations.findIndex(r => r.id === movie.id);
+                if (existingIndex === -1) {
+                  allRecommendations.push({
+                    ...movie,
+                    recommendedAt: new Date(thread.updated_at || Date.now()),
+                    reason: lastUserMessage
+                  });
+                }
+              });
+            }
+          });
+          // Reverse to show newest first
+          allRecommendations.reverse();
+          renderRecommendationsSidebar();
+
+          renderThreadList();
+          closeSidebar();
+        }
+      } catch (e) {
+        console.error('Failed to load thread:', e);
+      }
+    }
+
+    async function saveThread() {
+      if (chatMessages.length < 2) return;
+
+      // Re-check authentication if currentUser is not set (handles race condition)
+      if (!currentUser && clerkInstance && clerkInstance.session) {
+        await checkUserAuth();
+      }
+      if (!currentUser) return;
+
+      const title = chatMessages.find(m => m.role === 'user')?.content?.slice(0, 50) || 'New Chat';
+
+      try {
+        if (currentThreadId) {
+          // Update existing thread
+          const res = await fetch('/api/chat/threads/' + currentThreadId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...await getAuthHeaders() },
+            body: JSON.stringify({ title, messages: chatMessages })
+          });
+          if (!res.ok) {
+            console.error('Failed to update thread:', res.status, await res.text());
+          }
+        } else {
+          // Create new thread
+          const res = await fetch('/api/chat/threads', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...await getAuthHeaders() },
+            body: JSON.stringify({ title, messages: chatMessages })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            currentThreadId = data.id;
+            console.log('Thread created:', currentThreadId);
+          } else {
+            console.error('Failed to create thread:', res.status, await res.text());
+          }
+        }
+        await loadThreads();
+      } catch (e) {
+        console.error('Failed to save thread:', e);
+      }
+    }
+
+    async function deleteThread(threadId) {
+      if (!confirm(currentLang === 'ja' ? 'この会話を削除しますか？' : 'Delete this conversation?')) return;
+
+      try {
+        await fetch('/api/chat/threads/' + threadId, {
+          method: 'DELETE',
+          headers: await getAuthHeaders()
+        });
+
+        if (currentThreadId === threadId) {
+          startNewChat();
+        }
+        await loadThreads();
+      } catch (e) {
+        console.error('Failed to delete thread:', e);
+      }
+    }
+
+    function startNewChat() {
+      currentThreadId = null;
+      chatMessages = [];
+      allRecommendations = [];
+      document.getElementById('chat-messages').innerHTML = '';
+      initChat();
+      renderThreadList();
+      renderRecommendationsSidebar();
+      closeSidebar();
+    }
+
+    // ============================================
+    // Clerk Authentication
+    // ============================================
+    let clerkInstance = null;
+    let authToken = null;
+
+    function waitForClerk() {
+      return new Promise((resolve) => {
+        if (window.Clerk) {
+          resolve(window.Clerk);
+        } else {
+          const check = setInterval(() => {
+            if (window.Clerk) {
+              clearInterval(check);
+              resolve(window.Clerk);
+            }
+          }, 100);
+          setTimeout(() => {
+            clearInterval(check);
+            resolve(null);
+          }, 10000);
+        }
+      });
+    }
+
+    async function initClerk() {
+      try {
+        const clerk = await waitForClerk();
+        if (!clerk) {
+          console.warn('Clerk failed to load');
+          return;
+        }
+
+        await clerk.load();
+        clerkInstance = clerk;
+
+        if (clerkInstance.session) {
+          authToken = await clerkInstance.session.getToken();
+          console.log('Clerk: Logged in, token obtained');
+        } else {
+          console.log('Clerk: No active session');
+        }
+
+        clerkInstance.addListener(async () => {
+          if (clerkInstance.session) {
+            authToken = await clerkInstance.session.getToken();
+            console.log('Clerk: Session updated, token refreshed');
+            // Re-check user auth and reload threads when session is updated
+            await checkUserAuth();
+            await loadThreads();
+          } else {
+            authToken = null;
+            currentUser = null;
+            threads = [];
+            renderThreadList();
+            console.log('Clerk: Session ended');
+          }
+        });
+      } catch (e) {
+        console.error('Failed to init Clerk:', e);
+      }
+    }
+
+    async function getAuthHeaders() {
+      if (clerkInstance && clerkInstance.session) {
+        try {
+          authToken = await clerkInstance.session.getToken();
+        } catch (e) {
+          console.error('Failed to get token:', e);
+          authToken = null;
+        }
+      }
+      return authToken ? { 'Authorization': 'Bearer ' + authToken } : {};
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function getTitle(movie) {
+      if (currentLang === 'en') {
+        return movie.title || movie.title_ja;
+      }
+      return movie.title_ja || movie.title;
+    }
+
+    // ============================================
+    // Watched/Watchlist/Dismissed Features
+    // ============================================
+
+    let currentModalMovieId = null;
+    let currentModalMovieTitle = null;
+    let currentWatchedData = null;
+    let currentDismissedData = null;
+    let isRatingMode = false;
+
+    // 自動メッセージ送信（モーダルのアクションに反応）
+    async function sendAutoMessage(message) {
+      if (isSending) return;
+
+      addMessage('user', message);
+
+      if (!currentThreadId && chatMessages.length >= 2) {
+        await saveThread();
+      }
+
+      isSending = true;
+      document.getElementById('send-btn').disabled = true;
+      addMessageToUI('typing', '');
+
+      try {
+        const authHeaders = await getAuthHeaders();
+        const apiMessages = chatMessages.map(m => ({ role: m.role, content: m.content }));
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body: JSON.stringify({ messages: apiMessages, lang: currentLang })
+        });
+
+        removeTypingIndicator();
+
+        if (!response.ok) throw new Error('Request failed');
+
+        const data = await response.json();
+        const movies = data.recommendations || (data.recommendation ? [data.recommendation] : []);
+        const extendedInfo = data.extendedInfo || null;
+        addMessage('assistant', data.message, movies, extendedInfo);
+
+        // Add recommendations to sidebar
+        if (movies.length > 0) {
+          addRecommendationsToSidebar(movies, message);
+        }
+
+        await saveThread();
+      } catch (error) {
+        removeTypingIndicator();
+        const errorMsg = currentLang === 'ja'
+          ? 'すみません、エラーが発生しました。'
+          : 'Sorry, an error occurred.';
+        addMessage('assistant', errorMsg);
+        console.error('Auto message error:', error);
+      } finally {
+        isSending = false;
+        document.getElementById('send-btn').disabled = false;
+      }
+
+      // スクロールを一番下に
+      const container = document.getElementById('chat-messages');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function toggleWatchedUI() {
+      if (!currentUser) {
+        alert(currentLang === 'ja' ? 'ログインしてください' : 'Please login first');
+        return;
+      }
+
+      const starRating = document.getElementById('star-rating');
+      starRating.classList.add('active');
+      isRatingMode = true;
+    }
+
+    function hoverRating(rating) {
+      const stars = document.querySelectorAll('#star-rating .star');
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('hover');
+        } else {
+          star.classList.remove('hover');
+        }
+      });
+    }
+
+    function resetRatingHover() {
+      const stars = document.querySelectorAll('#star-rating .star');
+      stars.forEach(star => star.classList.remove('hover'));
+    }
+
+    async function setRating(rating) {
+      if (!currentUser || !currentModalMovieId) {
+        alert(currentLang === 'ja' ? 'ログインしてください' : 'Please login first');
+        return;
+      }
+
+      const movieTitle = currentModalMovieTitle;
+
+      try {
+        const res = await fetch('/api/watched', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...await getAuthHeaders()
+          },
+          body: JSON.stringify({ movieId: currentModalMovieId, rating })
+        });
+
+        if (res.ok) {
+          currentWatchedData = { rating };
+          updateWatchedUI();
+
+          // モーダルを閉じてAIにフィードバック
+          MovieModal.closeModal();
+          const ratingText = '★'.repeat(rating);
+          const message = currentLang === 'ja'
+            ? `「${movieTitle}」は見たよ！${ratingText}`
+            : `I've watched "${movieTitle}"! ${ratingText}`;
+          sendAutoMessage(message);
+        } else if (res.status === 401) {
+          currentUser = null;
+          authToken = null;
+          alert(currentLang === 'ja' ? 'ログインしてください' : 'Please login first');
+        }
+      } catch (e) {
+        console.error('Failed to save watched:', e);
+      }
+    }
+
+    function showStarRating() {
+      const starRating = document.getElementById('star-rating');
+      const ratingDisplay = document.getElementById('watched-rating-display');
+      starRating.classList.add('active');
+      ratingDisplay.style.display = 'none';
+      isRatingMode = true;
+
+      if (currentWatchedData && currentWatchedData.rating) {
+        highlightStars(currentWatchedData.rating);
+      }
+    }
+
+    function highlightStars(rating) {
+      const stars = document.querySelectorAll('#star-rating .star');
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      });
+    }
+
+    async function removeWatched() {
+      if (!currentUser || !currentModalMovieId) return;
+
+      if (!confirm(currentLang === 'ja' ? '視聴済みから削除しますか？' : 'Remove from watched?')) {
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/watched/' + currentModalMovieId, {
+          method: 'DELETE',
+          headers: await getAuthHeaders()
+        });
+
+        if (res.ok) {
+          currentWatchedData = null;
+          updateWatchedUI();
+        }
+      } catch (e) {
+        console.error('Failed to remove watched:', e);
+      }
+    }
+
+    function updateWatchedUI() {
+      const watchedBtn = document.getElementById('watched-btn');
+      const watchedBtnIcon = document.getElementById('watched-btn-icon');
+      const watchedBtnText = document.getElementById('watched-btn-text');
+      const starRating = document.getElementById('star-rating');
+      const ratingDisplay = document.getElementById('watched-rating-display');
+      const removeBtn = document.getElementById('remove-watched-btn');
+      const currentRatingStars = document.getElementById('current-rating-stars');
+
+      if (currentWatchedData && currentWatchedData.rating) {
+        watchedBtn.classList.add('active');
+        watchedBtnIcon.textContent = '✅';
+        watchedBtnText.textContent = currentLang === 'ja' ? '視聴済み' : 'Watched';
+        watchedBtn.style.display = 'none';
+        starRating.classList.remove('active');
+        ratingDisplay.style.display = 'flex';
+        removeBtn.style.display = 'block';
+
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+          starsHtml += '<span style="color:' + (i <= currentWatchedData.rating ? '#ffc107' : '#444') + '">★</span>';
+        }
+        currentRatingStars.innerHTML = starsHtml;
+        isRatingMode = false;
+      } else {
+        watchedBtn.classList.remove('active');
+        watchedBtnIcon.textContent = '✅';
+        watchedBtnText.textContent = currentLang === 'ja' ? '見た' : 'Watched';
+        watchedBtn.style.display = 'flex';
+        starRating.classList.remove('active');
+        ratingDisplay.style.display = 'none';
+        removeBtn.style.display = 'none';
+        highlightStars(0);
+        isRatingMode = false;
+      }
+    }
+
+    async function loadWatchedStatus(movieId) {
+      if (!currentUser) {
+        document.getElementById('watched-container').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('watched-container').style.display = 'flex';
+
+      try {
+        const res = await fetch('/api/watched/' + movieId, {
+          headers: await getAuthHeaders()
+        });
+        const data = await res.json();
+        currentWatchedData = data.watched;
+        updateWatchedUI();
+      } catch (e) {
+        console.error('Failed to load watched status:', e);
+        currentWatchedData = null;
+        updateWatchedUI();
+      }
+    }
+
+    // Not Interested Feature
+    async function loadDismissedStatus(movieId) {
+      const notInterestedBtn = document.getElementById('not-interested-btn');
+      const removeNotInterestedBtn = document.getElementById('remove-not-interested-btn');
+
+      if (!currentUser) {
+        notInterestedBtn.style.display = 'none';
+        removeNotInterestedBtn.style.display = 'none';
+        document.querySelector('.button-separator')?.style.setProperty('display', 'none');
+        return;
+      }
+
+      notInterestedBtn.style.display = 'flex';
+      document.querySelector('.button-separator')?.style.setProperty('display', 'block');
+
+      try {
+        const res = await fetch('/api/dismissed', {
+          headers: await getAuthHeaders()
+        });
+
+        if (res.status === 401) {
+          notInterestedBtn.style.display = 'none';
+          removeNotInterestedBtn.style.display = 'none';
+          document.querySelector('.button-separator')?.style.setProperty('display', 'none');
+          currentDismissedData = null;
+          return;
+        }
+
+        const data = await res.json();
+        const dismissed = data.dismissedMovies || [];
+        currentDismissedData = dismissed.find(d => d.movie_id === movieId) || null;
+        updateNotInterestedUI();
+      } catch (e) {
+        console.error('Failed to load dismissed status:', e);
+        currentDismissedData = null;
+        updateNotInterestedUI();
+      }
+    }
+
+    async function toggleNotInterested() {
+      if (!currentUser) {
+        alert(currentLang === 'ja' ? 'ログインしてください' : 'Please login first');
+        return;
+      }
+
+      if (!currentModalMovieId) {
+        console.error('No movie ID for not interested');
+        return;
+      }
+
+      const movieTitle = currentModalMovieTitle;
+
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch('/api/dismissed', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...headers
+          },
+          body: JSON.stringify({ movieId: Number(currentModalMovieId) })
+        });
+
+        if (res.ok) {
+          currentDismissedData = { movie_id: currentModalMovieId };
+          updateNotInterestedUI();
+
+          // モーダルを閉じてAIにフィードバック
+          MovieModal.closeModal();
+          const message = currentLang === 'ja'
+            ? `「${movieTitle}」はあんまり興味ないかな`
+            : `"${movieTitle}" doesn't really interest me`;
+          sendAutoMessage(message);
+        } else if (res.status === 401) {
+          currentUser = null;
+          authToken = null;
+          alert(currentLang === 'ja' ? 'ログインしてください' : 'Please login first');
+        } else {
+          const errorData = await res.json();
+          console.error('Failed to dismiss movie:', res.status, errorData);
+        }
+      } catch (e) {
+        console.error('Failed to save not interested:', e);
+      }
+    }
+
+    async function removeNotInterested() {
+      if (!currentUser || !currentModalMovieId) return;
+
+      try {
+        const res = await fetch('/api/dismissed/' + currentModalMovieId, {
+          method: 'DELETE',
+          headers: await getAuthHeaders()
+        });
+
+        if (res.ok) {
+          currentDismissedData = null;
+          updateNotInterestedUI();
+        } else if (res.status === 401) {
+          currentUser = null;
+          authToken = null;
+          alert(currentLang === 'ja' ? 'ログインしてください' : 'Please login first');
+        }
+      } catch (e) {
+        console.error('Failed to remove not interested:', e);
+      }
+    }
+
+    function updateNotInterestedUI() {
+      const btn = document.getElementById('not-interested-btn');
+      const btnIcon = document.getElementById('not-interested-btn-icon');
+      const btnText = document.getElementById('not-interested-btn-text');
+      const removeBtn = document.getElementById('remove-not-interested-btn');
+
+      if (!btn || !btnIcon || !btnText || !removeBtn) {
+        console.error('Not interested UI elements not found');
+        return;
+      }
+
+      if (currentDismissedData) {
+        btn.classList.add('active');
+        btnIcon.textContent = '🚫';
+        btnText.textContent = currentLang === 'ja' ? '興味なし' : 'Not Interested';
+        removeBtn.style.display = 'block';
+      } else {
+        btn.classList.remove('active');
+        btnIcon.textContent = '🚫';
+        btnText.textContent = currentLang === 'ja' ? '興味なし' : 'Not Interested';
+        removeBtn.style.display = 'none';
+      }
+    }
+
+    // Want to Watch Feature is now in /js/watchlist.js
+
+    // Initialize
+    function initChat() {
+      // Update UI text based on language
+      if (currentLang === 'en') {
+        document.title = 'AI Movie Diagnosis - owlnight';
+        document.querySelector('.chat-header h1').textContent = 'AI Movie Diagnosis';
+        document.getElementById('chat-input').placeholder = 'What kind of movie do you want to watch?';
+        document.querySelector('.chat-reset').title = 'Reset';
+        // Update recommendations sidebar text
+        document.querySelector('.recommendations-header h2').textContent = 'AI Picks';
+        document.querySelector('.recommendations-subtitle').textContent = 'Curated for you';
+      }
+
+      // Update suggestion chips for current language
+      updateSuggestionChips();
+
+      // Update reply templates for current language
+      updateReplyTemplatesLanguage();
+
+      // Hide reply templates initially (no movies recommended yet)
+      showReplyTemplates(false);
+
+      // Initialize recommendations sidebar
+      renderRecommendationsSidebar();
+
+      const greeting = currentLang === 'en'
+        ? "Hey! What kind of mood are you in today?"
+        : 'やあ！今日はどんな気分？';
+      addMessage('assistant', greeting);
+      document.getElementById('chat-input').focus();
+    }
+
+    function resetChat() {
+      startNewChat();
+    }
+
+    // Add message to UI only (no state change)
+    function addMessageToUI(role, content, movies = [], extendedInfo = null) {
+      const container = document.getElementById('chat-messages');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'chat-message ' + role;
+
+      if (role === 'typing') {
+        msgDiv.id = 'typing-indicator';
+        msgDiv.innerHTML = '<div class="chat-typing"><span></span><span></span><span></span></div>';
+      } else {
+        let html = '<div class="message-content">' + escapeHtml(content) + '</div>';
+
+        // Add movie carousel if there are recommendations
+        if (movies && movies.length > 0) {
+          html += '<div class="movie-carousel"><div class="movie-carousel-inner">';
+          movies.forEach(movie => {
+            const poster = movie.poster_path
+              ? TMDB_IMAGE_BASE + movie.poster_path
+              : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 200 300%27%3E%3Crect fill=%27%23222%27 width=%27200%27 height=%27300%27/%3E%3Ctext x=%27100%27 y=%27150%27 text-anchor=%27middle%27 fill=%27%23555%27 font-size=%2740%27%3E%F0%9F%8E%AC%3C/text%3E%3Ctext x=%27100%27 y=%27180%27 text-anchor=%27middle%27 fill=%27%23666%27 font-size=%2712%27%3ENo Image%3C/text%3E%3C/svg%3E';
+            const title = getTitle(movie);
+            const year = movie.release_date ? movie.release_date.split('-')[0] : '';
+            html += `
+              <div class="movie-card" onclick="showMovieDetail(${movie.id})">
+                <img src="${poster}" alt="${escapeHtml(title)}" loading="lazy">
+                <div class="movie-card-info">
+                  <div class="movie-card-title">${escapeHtml(title)}</div>
+                  <div class="movie-card-meta">
+                    <span>${year}</span>
+                    <span class="movie-card-rating">★ ${movie.vote_average?.toFixed(1) || '-'}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+          html += '</div></div>';
+        }
+
+        // Add extended info (trailers & OTT providers)
+        if (extendedInfo) {
+          html += renderExtendedInfo(extendedInfo);
+        }
+
+        msgDiv.innerHTML = html;
+      }
+
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function addMessage(role, content, movies = [], extendedInfo = null) {
+      if (role !== 'typing') {
+        chatMessages.push({ role, content, movies, extendedInfo });
+      }
+      addMessageToUI(role, content, movies, extendedInfo);
+
+      // Show reply templates when AI recommends movies
+      if (role === 'assistant' && movies && movies.length > 0) {
+        showReplyTemplates(true);
+      }
+    }
+
+    function removeTypingIndicator() {
+      const typing = document.getElementById('typing-indicator');
+      if (typing) typing.remove();
+    }
+
+    async function sendChat() {
+      if (isSending) return;
+
+      const input = document.getElementById('chat-input');
+      const message = input.value.trim();
+      if (!message) return;
+
+      input.value = '';
+      addMessage('user', message);
+
+      // Create thread immediately when user sends first message
+      if (!currentThreadId && chatMessages.length >= 2) {
+        await saveThread();
+      }
+
+      isSending = true;
+      document.getElementById('send-btn').disabled = true;
+      addMessageToUI('typing', '');
+
+      try {
+        const authHeaders = await getAuthHeaders();
+        console.log('Sending chat with auth:', Object.keys(authHeaders).length > 0 ? 'authenticated' : 'anonymous');
+
+        // Send only role/content to API (not movies)
+        const apiMessages = chatMessages.map(m => ({ role: m.role, content: m.content }));
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body: JSON.stringify({ messages: apiMessages, lang: currentLang })
+        });
+
+        removeTypingIndicator();
+
+        if (!response.ok) throw new Error('Request failed');
+
+        const data = await response.json();
+        const movies = data.recommendations || (data.recommendation ? [data.recommendation] : []);
+        const extendedInfo = data.extendedInfo || null;
+        addMessage('assistant', data.message, movies, extendedInfo);
+
+        // Add recommendations to sidebar
+        if (movies.length > 0) {
+          addRecommendationsToSidebar(movies, message);
+        }
+
+        // Auto-save thread after each response
+        await saveThread();
+      } catch (error) {
+        removeTypingIndicator();
+        const errorMsg = currentLang === 'ja'
+          ? 'すみません、エラーが発生しました。もう一度お試しください。'
+          : 'Sorry, an error occurred. Please try again.';
+        addMessage('assistant', errorMsg);
+        console.error('Chat error:', error);
+      } finally {
+        isSending = false;
+        document.getElementById('send-btn').disabled = false;
+        input.focus();
+      }
+    }
+
+    function handleKeypress(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChat();
+      }
+    }
+
+    // Suggestion chips
+    const suggestions = {
+      ja: {
+        trending: '今話題の映画は？',
+        surprise: '私の好みでおまかせ',
+        hidden: '隠れた名作を探して',
+        feelgood: '今夜ほっこりできる映画'
+      },
+      en: {
+        trending: "What's trending right now?",
+        surprise: 'Surprise me based on my taste',
+        hidden: 'Find me a hidden gem',
+        feelgood: 'A feel-good movie for tonight'
+      }
+    };
+
+    function useSuggestion(key) {
+      const text = suggestions[currentLang]?.[key] || suggestions['ja'][key];
+      document.getElementById('chat-input').value = text;
+      sendChat();
+    }
+
+    // Reply templates (shown after AI recommends movies)
+    const replyTemplates = {
+      ja: {
+        ok: '良さそう！もうちょっと詳しく教えて',
+        watched: '見たことある！他のおすすめは？',
+        want: '見たい！ウォッチリストに追加しておく',
+        notinterested: 'うーん、ちょっと違うかな。他には？',
+        next: '次のおすすめを見せて'
+      },
+      en: {
+        ok: 'Sounds good! Tell me more about it',
+        watched: "I've seen this one! Any other recommendations?",
+        want: 'I want to watch this! Adding to my watchlist',
+        notinterested: "Hmm, not quite what I'm looking for. What else?",
+        next: 'Show me the next recommendation'
+      }
+    };
+
+    let hasRecommendedMovies = false;
+
+    function useReplyTemplate(key) {
+      const text = replyTemplates[currentLang]?.[key] || replyTemplates['ja'][key];
+      document.getElementById('chat-input').value = text;
+      sendChat();
+    }
+
+    // Rating tooltip functions
+    function toggleRatingTooltip(event) {
+      event.stopPropagation();
+      const tooltip = document.getElementById('rating-tooltip');
+      tooltip.classList.toggle('active');
+    }
+
+    function hideRatingTooltip() {
+      const tooltip = document.getElementById('rating-tooltip');
+      tooltip.classList.remove('active');
+      unhoverStars();
+    }
+
+    function hoverStar(rating) {
+      const stars = document.querySelectorAll('.rating-star');
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('hovered');
+        } else {
+          star.classList.remove('hovered');
+        }
+      });
+    }
+
+    function unhoverStars() {
+      const stars = document.querySelectorAll('.rating-star');
+      stars.forEach(star => star.classList.remove('hovered'));
+    }
+
+    function submitWatchedWithRating(rating) {
+      hideRatingTooltip();
+      const ratingTexts = {
+        ja: {
+          1: '見たことある！正直微妙だった（★☆☆☆☆）。他のおすすめは？',
+          2: '見たことある！まあまあかな（★★☆☆☆）。他のおすすめは？',
+          3: '見たことある！普通に良かった（★★★☆☆）。他のおすすめは？',
+          4: '見たことある！結構好き（★★★★☆）！他のおすすめは？',
+          5: '見たことある！最高だった（★★★★★）！他のおすすめは？'
+        },
+        en: {
+          1: "I've seen this! Honestly wasn't great (★☆☆☆☆). What else?",
+          2: "I've seen this! It was okay (★★☆☆☆). What else?",
+          3: "I've seen this! Pretty good (★★★☆☆). What else?",
+          4: "I've seen this! Really liked it (★★★★☆)! What else?",
+          5: "I've seen this! It was amazing (★★★★★)! What else?"
+        }
+      };
+      const text = ratingTexts[currentLang]?.[rating] || ratingTexts['ja'][rating];
+      document.getElementById('chat-input').value = text;
+      sendChat();
+    }
+
+    // Close rating tooltip when clicking outside
+    document.addEventListener('click', function(event) {
+      const tooltip = document.getElementById('rating-tooltip');
+      const watchedBtn = document.getElementById('watched-btn');
+      if (tooltip && watchedBtn && !tooltip.contains(event.target) && event.target !== watchedBtn) {
+        hideRatingTooltip();
+      }
+    });
+
+    function showReplyTemplates(show) {
+      const templates = document.getElementById('reply-templates');
+      if (show) {
+        templates.classList.add('active');
+        hasRecommendedMovies = true;
+      } else {
+        templates.classList.remove('active');
+        hasRecommendedMovies = false;
+        hideRatingTooltip(); // Hide rating tooltip when templates are hidden
+      }
+    }
+
+    function updateReplyTemplatesLanguage() {
+      const templates = document.querySelectorAll('.reply-template-btn');
+      const keys = ['ok', 'watched', 'want', 'notinterested', 'next'];
+      const labels = {
+        ja: ['👍 良さそう', '✅ 見た', '🩷 みたい', '🚫 興味なし', '➡️ 次'],
+        en: ['👍 Looks good', '✅ Seen it', '🩷 Want to watch', '🚫 Not interested', '➡️ Next']
+      };
+      templates.forEach((btn, i) => {
+        btn.textContent = labels[currentLang]?.[i] || labels['ja'][i];
+      });
+      // Update rating tooltip label
+      const tooltipLabel = document.querySelector('.rating-tooltip-label');
+      if (tooltipLabel) {
+        tooltipLabel.textContent = currentLang === 'en' ? 'Rate this movie' : '評価してください';
+      }
+    }
+
+    function updateSuggestionChips() {
+      const chips = document.querySelectorAll('.suggestion-chip span[data-i18n]');
+      chips.forEach(span => {
+        const key = span.dataset.i18n.replace('suggestion-', '');
+        span.textContent = suggestions[currentLang]?.[key] || suggestions['ja'][key];
+      });
+    }
+
+    // Use shared MovieModal component
+    function showMovieDetail(id) {
+      MovieModal.openModal(id);
+    }
+
+    // Extended Info - Trailer & OTT Providers
+    function renderExtendedInfo(info) {
+      let html = '<div class="extended-info">';
+
+      // Trailers
+      if (info.videos && info.videos.length > 0) {
+        const trailerLabel = currentLang === 'ja' ? '🎬 予告編' : '🎬 Trailers';
+        html += `<div class="extended-section">
+          <div class="extended-section-title">${trailerLabel}</div>
+          <div class="trailer-list">`;
+        info.videos.forEach(v => {
+          const thumbUrl = `https://img.youtube.com/vi/${v.key}/mqdefault.jpg`;
+          html += `<div class="trailer-item" onclick="openTrailer('${v.key}')">
+            <div class="trailer-thumbnail">
+              <img src="${thumbUrl}" alt="${escapeHtml(v.name)}" loading="lazy">
+              <div class="trailer-play-btn"><span>▶</span></div>
+            </div>
+            <div class="trailer-name">${escapeHtml(v.name)}</div>
+          </div>`;
+        });
+        html += '</div></div>';
+      }
+
+      // OTT Providers
+      const allProviders = [
+        ...(info.providers.flatrate || []).map(p => ({...p, type: currentLang === 'ja' ? '見放題' : 'Stream'})),
+        ...(info.providers.rent || []).map(p => ({...p, type: currentLang === 'ja' ? 'レンタル' : 'Rent'})),
+        ...(info.providers.buy || []).map(p => ({...p, type: currentLang === 'ja' ? '購入' : 'Buy'}))
+      ];
+      if (allProviders.length > 0) {
+        const providerLabel = currentLang === 'ja' ? '📺 視聴できるサービス' : '📺 Where to Watch';
+        html += `<div class="extended-section">
+          <div class="extended-section-title">${providerLabel}</div>
+          <div class="provider-list">`;
+        allProviders.forEach(p => {
+          const logoUrl = `https://image.tmdb.org/t/p/w92${p.logo}`;
+          const searchUrl = getProviderSearchUrl(p.name, info.movieTitle);
+          html += `<a href="${searchUrl}" target="_blank" rel="noopener" class="provider-item">
+            <img src="${logoUrl}" class="provider-logo" alt="${escapeHtml(p.name)}" loading="lazy">
+            <div>
+              <div class="provider-name">${escapeHtml(p.name)}</div>
+              <div class="provider-type">${p.type}</div>
+            </div>
+          </a>`;
+        });
+        html += '</div></div>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function getProviderSearchUrl(providerName, movieTitle) {
+      const encoded = encodeURIComponent(movieTitle);
+      const urls = {
+        'Netflix': `https://www.netflix.com/search?q=${encoded}`,
+        'Amazon Prime Video': `https://www.amazon.co.jp/s?k=${encoded}&i=instant-video`,
+        'Disney Plus': `https://www.disneyplus.com/ja-jp/search?q=${encoded}`,
+        'Apple TV': `https://tv.apple.com/jp/search?term=${encoded}`,
+        'U-NEXT': `https://video.unext.jp/search?query=${encoded}`,
+        'Hulu': `https://www.hulu.jp/search?q=${encoded}`,
+        'ABEMA': `https://abema.tv/search?q=${encoded}`,
+        'dTV': `https://video.dmkt-sp.jp/search/title?search_text=${encoded}`,
+        'Rakuten TV': `https://tv.rakuten.co.jp/search/?q=${encoded}`,
+      };
+      return urls[providerName] || `https://www.justwatch.com/jp/search?q=${encoded}`;
+    }
+
+    function openTrailer(videoKey) {
+      // Use the shared video modal instead of opening a new tab
+      MovieModal.openVideoModal(videoKey);
+    }
+
+    // Check if user is logged in and load user data
+    async function checkUserAuth() {
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: await getAuthHeaders()
+        });
+        if (res.ok) {
+          currentUser = await res.json();
+          MovieWatchlist.setUser(currentUser);
+          return true;
+        }
+      } catch (e) {
+        console.error('Auth check failed:', e);
+      }
+      currentUser = null;
+      MovieWatchlist.setUser(null);
+      return false;
+    }
+
+    // Initialize
+    initClerk().then(async () => {
+      // Check if user is authenticated
+      if (clerkInstance && clerkInstance.session) {
+        await checkUserAuth();
+      }
+
+      // Load thread list
+      await loadThreads();
+
+      // Initialize chat
+      initChat();
+
+      // Initialize MovieWatchlist module
+      MovieWatchlist.init({
+        user: currentUser,
+        lang: currentLang,
+        getAuthHeaders: getAuthHeaders,
+        callbacks: {
+          onWatchlistAdded: (movieId, movieTitle) => {
+            // Close modal and send auto message to AI
+            MovieModal.closeModal();
+            const message = currentLang === 'ja'
+              ? `「${movieTitle}」が気になる！`
+              : `I'm interested in "${movieTitle}"!`;
+            sendAutoMessage(message);
+          },
+          onAuthExpired: () => {
+            currentUser = null;
+            authToken = null;
+          }
+        }
+      });
+
+      // Check for pending query from index.html hero-search
+      const pendingQuery = sessionStorage.getItem('ottflix-chat-query');
+      if (pendingQuery) {
+        sessionStorage.removeItem('ottflix-chat-query');
+        document.getElementById('chat-input').value = pendingQuery;
+        sendChat();
+      }
+
+      // Initialize shared modal with callback for watched/watchlist/dismissed status
+      MovieModal.init({
+        lang: currentLang,
+        callbacks: {
+          afterOpen: (id, movie) => {
+            console.log('Modal afterOpen called', { id, movie });
+            currentModalMovieId = id;
+            // 映画タイトルを保存（日本語優先）
+            currentModalMovieTitle = currentLang === 'ja'
+              ? (movie.title_ja || movie.title)
+              : (movie.title || movie.title_ja);
+            // Set current movie in watchlist module
+            MovieWatchlist.setCurrentMovie(id, currentModalMovieTitle);
+            loadWatchedStatus(id);
+            loadDismissedStatus(id);
+            loadWatchlistStatus(id); // Uses MovieWatchlist module
+          }
+        }
+      });
+
+      // Update sidebar UI based on language
+      if (currentLang === 'en') {
+        document.querySelector('.sidebar-title').textContent = 'History';
+        document.querySelector('.new-chat-btn').textContent = '+ New';
+      }
+    });
+  </script>
+</body>
+</html>
