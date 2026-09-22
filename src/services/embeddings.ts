@@ -7,9 +7,18 @@ if (!OPENAI_API_KEY || OPENAI_API_KEY === "your_openai_api_key") {
   console.warn("Warning: OPENAI_API_KEY is not set. Embeddings generation will fail.");
 }
 
-const openai = new OpenAI({
-  apiKey: OPENAI_API_KEY,
-});
+// Lazy client: the server must boot without OPENAI_API_KEY (search/chat/onboarding
+// then fail per request instead of crashing at import time).
+let openaiClient: OpenAI | null = null;
+export function getOpenAI(): OpenAI {
+  if (!OPENAI_API_KEY || OPENAI_API_KEY === "your_openai_api_key") {
+    throw new Error("OPENAI_API_KEY is not set");
+  }
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
+  }
+  return openaiClient;
+}
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const EMBEDDING_DIMENSIONS = 1536;
@@ -21,7 +30,7 @@ export interface EmbeddingResult {
 }
 
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await openai.embeddings.create({
+  const response = await getOpenAI().embeddings.create({
     model: EMBEDDING_MODEL,
     input: text,
     dimensions: EMBEDDING_DIMENSIONS,
@@ -38,7 +47,7 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
     const batch = texts.slice(i, i + BATCH_SIZE);
     console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(texts.length / BATCH_SIZE)}`);
 
-    const response = await openai.embeddings.create({
+    const response = await getOpenAI().embeddings.create({
       model: EMBEDDING_MODEL,
       input: batch,
       dimensions: EMBEDDING_DIMENSIONS,

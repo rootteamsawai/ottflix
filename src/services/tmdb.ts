@@ -3,8 +3,13 @@ import "dotenv/config";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_ACCESS_TOKEN = process.env.TMDB_ACCESS_TOKEN;
 
-if (!TMDB_ACCESS_TOKEN) {
-  throw new Error("TMDB_ACCESS_TOKEN environment variable is not set");
+// Checked per request so the server can boot without the token
+// (only /api/movies/now-playing and the fetch scripts need it).
+function tmdbToken(): string {
+  if (!TMDB_ACCESS_TOKEN) {
+    throw new Error("TMDB_ACCESS_TOKEN environment variable is not set");
+  }
+  return TMDB_ACCESS_TOKEN;
 }
 
 export interface TMDbMovie {
@@ -97,7 +102,7 @@ export async function discoverMovies(
 
   const response = await fetchWithRetry(url.toString(), {
     headers: {
-      Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${tmdbToken()}`,
       "Content-Type": "application/json",
     },
   });
@@ -114,7 +119,7 @@ export async function getMovieDetails(
 
   const response = await fetchWithRetry(url.toString(), {
     headers: {
-      Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${tmdbToken()}`,
       "Content-Type": "application/json",
     },
   });
@@ -159,7 +164,7 @@ export async function getWatchProviders(
 
   const response = await fetchWithRetry(url.toString(), {
     headers: {
-      Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${tmdbToken()}`,
       "Content-Type": "application/json",
     },
   });
@@ -265,7 +270,7 @@ export async function getMovieFullDetails(
 
   const response = await fetchWithRetry(url.toString(), {
     headers: {
-      Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${tmdbToken()}`,
       "Content-Type": "application/json",
     },
   });
@@ -282,7 +287,7 @@ export async function getMovieFullDetailsEnglish(
 
   const response = await fetchWithRetry(url.toString(), {
     headers: {
-      Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${tmdbToken()}`,
       "Content-Type": "application/json",
     },
   });
@@ -315,7 +320,7 @@ export async function getNowPlaying(
 
   const response = await fetchWithRetry(url.toString(), {
     headers: {
-      Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${tmdbToken()}`,
       "Content-Type": "application/json",
     },
   });
