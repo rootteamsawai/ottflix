@@ -1,8 +1,5 @@
-import OpenAI from "openai";
 import { sqliteDb } from "../db/index.js";
-import { generateEmbedding } from "./embeddings.js";
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import { generateEmbedding, getOpenAI } from "./embeddings.js";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -317,7 +314,7 @@ ${candidateText}${alreadyRecommendedText}${dismissedMoviesText}
 - 異なる国の映画を混ぜる
 - 異なるサブジャンルを含める`;
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
       { role: "system", content: systemPrompt },

@@ -1,12 +1,8 @@
-import OpenAI from "openai";
 import "dotenv/config";
 import { sqliteDb } from "../db/index.js";
-import { generateEmbedding } from "./embeddings.js";
+import { generateEmbedding, getOpenAI } from "./embeddings.js";
 import { updateUserEmbedding, markOnboardingCompleted } from "./auth.js";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 export interface OnboardingMessage {
   role: "user" | "assistant";
@@ -91,7 +87,7 @@ export async function processOnboardingChat(
   messages.push({ role: "user", content: userMessage });
 
   // Generate AI response
-  const completion = await openai.chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
